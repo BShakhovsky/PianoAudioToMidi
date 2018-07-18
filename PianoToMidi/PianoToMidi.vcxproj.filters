@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\FFmpeg">
+      <UniqueIdentifier>{5afd9c39-a8a8-450e-9069-812660c4a4fc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\FFmpeg">
+      <UniqueIdentifier>{7fbf5e01-5a67-4109-9431-15a99f796c24}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -21,10 +27,34 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="FFmpegError.h">
+      <Filter>Header Files\FFmpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="Frame.h">
+      <Filter>Header Files\FFmpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="Packet.h">
+      <Filter>Header Files\FFmpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="AudioLoader.h">
+      <Filter>Header Files\FFmpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="MonoResampler.h">
+      <Filter>Header Files\FFmpeg</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AudioLoader.cpp">
+      <Filter>Source Files\FFmpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="MonoResampler.cpp">
+      <Filter>Source Files\FFmpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="FFmpegError.cpp">
+      <Filter>Source Files\FFmpeg</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -98,13 +98,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Anaconda3\include;$(Boost);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Anaconda3\include;$(Boost);$(DirectXTK);$(FFmpeg);$(DXSDK_DIR)Include;$(SolutionDir)PianoToMidi;C:\Program Files (x86)\Visual Leak Detector\include</AdditionalIncludeDirectories>
       <EnablePREfast>true</EnablePREfast>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);$(FFmpeg)Libs$(PlatformArchitecture);$(DirectXTK)$(PlatformTarget)\$(Configuration);$(DXSDK_DIR)Lib\$(PlatformTarget);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -115,13 +115,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Anaconda3\include;$(Boost);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Anaconda3\include;$(Boost);$(DirectXTK);$(FFmpeg);$(DXSDK_DIR)Include;$(SolutionDir)PianoToMidi;C:\Program Files (x86)\Visual Leak Detector\include</AdditionalIncludeDirectories>
       <EnablePREfast>true</EnablePREfast>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);$(FFmpeg)Libs$(PlatformArchitecture);$(DirectXTK)$(PlatformTarget)\$(Configuration);$(DXSDK_DIR)Lib\$(PlatformTarget);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -134,7 +134,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Anaconda3\include;$(Boost);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Anaconda3\include;$(Boost);$(DirectXTK);$(FFmpeg);$(DXSDK_DIR)Include;$(SolutionDir)PianoToMidi;C:\Program Files (x86)\Visual Leak Detector\include</AdditionalIncludeDirectories>
       <EnablePREfast>true</EnablePREfast>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -143,7 +143,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);$(FFmpeg)Libs$(PlatformArchitecture);$(DirectXTK)$(PlatformTarget)\$(Configuration);$(DXSDK_DIR)Lib\$(PlatformTarget);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -156,7 +156,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Anaconda3\include;$(Boost);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Anaconda3\include;$(Boost);$(DirectXTK);$(FFmpeg);$(DXSDK_DIR)Include;$(SolutionDir)PianoToMidi;C:\Program Files (x86)\Visual Leak Detector\include</AdditionalIncludeDirectories>
       <EnablePREfast>true</EnablePREfast>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -165,14 +165,17 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);$(FFmpeg)Libs$(PlatformArchitecture);$(DirectXTK)$(PlatformTarget)\$(Configuration);$(DXSDK_DIR)Lib\$(PlatformTarget);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="DirectSound.h" />
+    <ClInclude Include="SoundError.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="DirectSound.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
