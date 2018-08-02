@@ -31,6 +31,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <UseIntelMKL>Parallel</UseIntelMKL>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -38,12 +39,14 @@
     <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <UseIntelMKL>Parallel</UseIntelMKL>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <UseIntelMKL>Parallel</UseIntelMKL>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -51,6 +54,7 @@
     <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <UseIntelMKL>Parallel</UseIntelMKL>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -104,7 +108,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);$(FFmpeg)Libs$(PlatformArchitecture);$(DirectXTK)$(PlatformTarget)\$(Configuration);$(DXSDK_DIR)Lib\$(PlatformTarget);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);$(FFmpeg)Libs$(PlatformArchitecture);$(Juce)$(Platform)\$(Configuration);$(DirectXTK)$(PlatformTarget)\$(Configuration);$(DXSDK_DIR)Lib\$(PlatformTarget);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -121,7 +125,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);$(FFmpeg)Libs$(PlatformArchitecture);$(DirectXTK)$(PlatformTarget)\$(Configuration);$(DXSDK_DIR)Lib\$(PlatformTarget);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);$(FFmpeg)Libs$(PlatformArchitecture);$(Juce)$(Platform)\$(Configuration);$(DirectXTK)$(PlatformTarget)\$(Configuration);$(DXSDK_DIR)Lib\$(PlatformTarget);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -143,7 +147,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);$(FFmpeg)Libs$(PlatformArchitecture);$(DirectXTK)$(PlatformTarget)\$(Configuration);$(DXSDK_DIR)Lib\$(PlatformTarget);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);$(FFmpeg)Libs$(PlatformArchitecture);$(Juce)$(Platform)\$(Configuration);$(DirectXTK)$(PlatformTarget)\$(Configuration);$(DXSDK_DIR)Lib\$(PlatformTarget);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -165,7 +169,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);$(FFmpeg)Libs$(PlatformArchitecture);$(DirectXTK)$(PlatformTarget)\$(Configuration);$(DXSDK_DIR)Lib\$(PlatformTarget);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(Boost)Libs;$(Boost)Libs\$(Platform);$(FFmpeg)Libs$(PlatformArchitecture);$(Juce)$(Platform)\$(Configuration);$(DirectXTK)$(PlatformTarget)\$(Configuration);$(DXSDK_DIR)Lib\$(PlatformTarget);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

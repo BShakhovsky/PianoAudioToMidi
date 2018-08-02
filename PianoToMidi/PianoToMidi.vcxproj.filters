@@ -19,6 +19,12 @@
     <Filter Include="Source Files\FFmpeg">
       <UniqueIdentifier>{7fbf5e01-5a67-4109-9431-15a99f796c24}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\AudioTransforms">
+      <UniqueIdentifier>{54882ce4-97bd-4be7-bd41-8dc87153cabc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Audio Transforms">
+      <UniqueIdentifier>{e01df327-4c16-4770-a6c5-8239744fff90}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -42,6 +48,9 @@
     <ClInclude Include="MonoResampler.h">
       <Filter>Header Files\FFmpeg</Filter>
     </ClInclude>
+    <ClInclude Include="ShortTimeFourier.h">
+      <Filter>Header Files\Audio Transforms</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -55,6 +64,9 @@
     </ClCompile>
     <ClCompile Include="FFmpegError.cpp">
       <Filter>Source Files\FFmpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="ShortTimeFourier.cpp">
+      <Filter>Source Files\AudioTransforms</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
