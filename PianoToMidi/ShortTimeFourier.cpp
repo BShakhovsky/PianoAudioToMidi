@@ -3,13 +3,13 @@
 
 using namespace std;
 
-vector<float> PadCentered(const vector<float>& buff, int padSize, bool reflectMode)
+vector<float> PadCentered(const vector<float>& buff, int padSize, bool isModeReflect)
 {
 	vector<float> result(buff.size() + padSize, 0);
 	if (buff.empty()) return move(result);
 
 	auto unusedIter(copy(buff.cbegin(), buff.cend(), result.begin() + padSize / 2));
-	if (reflectMode) // otherwise leave zeros as with constant pad mode
+	if (isModeReflect) // otherwise leave zeros as with constant pad mode
 	{
 		auto iter(result.begin() + padSize / 2);
 		for (auto dist(distance(iter, result.end()) - padSize / 2 - 1); distance(result.begin(), iter) > dist;
@@ -34,7 +34,7 @@ vector<float> PadCentered(const vector<float>& buff, int padSize, bool reflectMo
 }
 
 ShortTimeFourier::ShortTimeFourier(const vector<float>& rawAudio,
-	const int frameLen, int hopLen, const bool windowHann, const bool padReflect)
+	const int frameLen, int hopLen, const bool isWindowHann, const bool isPadReflected)
 {
 	using namespace juce::dsp;
 
@@ -45,9 +45,9 @@ ShortTimeFourier::ShortTimeFourier(const vector<float>& rawAudio,
 	assert(hopLen > 0 && "Hop length must be positive and non-zero");
 
 	WindowingFunction<float> fftWindow(static_cast<size_t>(frameLen),
-		windowHann ? WindowingFunction<float>::hann : WindowingFunction<float>::rectangular, false);
+		isWindowHann ? WindowingFunction<float>::hann : WindowingFunction<float>::rectangular, false);
 
-	const auto paddedBuff(PadCentered(rawAudio, frameLen, padReflect)); // So that frames are centered
+	const auto paddedBuff(PadCentered(rawAudio, frameLen, isPadReflected)); // So that frames are centered
 	assert(paddedBuff.size() >= static_cast<size_t>(frameLen) &&
 		"PadCentered function must return at least frame length number of samples");
 
@@ -59,7 +59,7 @@ ShortTimeFourier::ShortTimeFourier(const vector<float>& rawAudio,
 		// Temporarily window the time series into buffer with different type (complex instead of float)
 		// FFT will overwrite result on top:
 		CopyMemory(stft_.at(i).data(), paddedBuff.data() + static_cast<ptrdiff_t>(i) * hopLen,
-			frameLen * sizeof paddedBuff.front());
+			frameLen * sizeof paddedBuff.front()); // The last two floats (one complex) is currently empty
 
 		fftWindow.multiplyWithWindowingTable(reinterpret_cast<float*>(
 			stft_.at(i).data()), stft_.at(i).size() * 2);
