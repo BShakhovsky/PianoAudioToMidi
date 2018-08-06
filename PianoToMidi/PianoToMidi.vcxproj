@@ -184,7 +184,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="AudioLoader.h" />
-    <ClInclude Include="CqBasis.h" />
+    <ClInclude Include="CqtBasis.h" />
     <ClInclude Include="CqtError.h" />
     <ClInclude Include="FFmpegError.h" />
     <ClInclude Include="ShortTimeFourier.h" />
@@ -196,7 +196,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AudioLoader.cpp" />
-    <ClCompile Include="CqBasis.cpp" />
+    <ClCompile Include="CqtBasis.cpp" />
     <ClCompile Include="FFmpegError.cpp" />
     <ClCompile Include="ShortTimeFourier.cpp" />
     <ClCompile Include="MonoResampler.cpp" />

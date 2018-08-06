@@ -34,7 +34,7 @@ vector<float> PadCentered(const vector<float>& buff, int padSize, bool isModeRef
 }
 
 ShortTimeFourier::ShortTimeFourier(const vector<float>& rawAudio,
-	const int frameLen, int hopLen, const bool isWindowHann, const bool isPadReflected)
+	const int frameLen, int hopLen, const STFT_WINDOW window, const bool isPadReflected)
 {
 	using namespace juce::dsp;
 
@@ -44,8 +44,27 @@ ShortTimeFourier::ShortTimeFourier(const vector<float>& rawAudio,
 	if (not hopLen) hopLen = frameLen / 4;
 	assert(hopLen > 0 && "Hop length must be positive and non-zero");
 
-	WindowingFunction<float> fftWindow(static_cast<size_t>(frameLen),
-		isWindowHann ? WindowingFunction<float>::hann : WindowingFunction<float>::rectangular, false);
+	unique_ptr<WindowingFunction<float>> fftWindow;
+	switch (window)
+	{
+	case STFT_WINDOW::RECT: fftWindow = make_unique<WindowingFunction<float>>(
+		static_cast<size_t>(frameLen), WindowingFunction<float>::rectangular, false); break;
+	case STFT_WINDOW::HANN: fftWindow = make_unique<WindowingFunction<float>>(
+		static_cast<size_t>(frameLen), WindowingFunction<float>::hann, false); break;
+	case STFT_WINDOW::HAMMING: fftWindow = make_unique<WindowingFunction<float>>(
+		static_cast<size_t>(frameLen), WindowingFunction<float>::hamming, false); break;
+	case STFT_WINDOW::BLACKMAN: fftWindow = make_unique<WindowingFunction<float>>(
+		static_cast<size_t>(frameLen), WindowingFunction<float>::blackman, false); break;
+	case STFT_WINDOW::BLACKMAN_HARRIS: fftWindow = make_unique<WindowingFunction<float>>(
+		static_cast<size_t>(frameLen), WindowingFunction<float>::blackmanHarris, false); break;
+	case STFT_WINDOW::FLAT_TOP: fftWindow = make_unique<WindowingFunction<float>>(
+		static_cast<size_t>(frameLen), WindowingFunction<float>::flatTop, false); break;
+	case STFT_WINDOW::KAISER: fftWindow = make_unique<WindowingFunction<float>>(
+		static_cast<size_t>(frameLen), WindowingFunction<float>::kaiser, false); break;
+	case STFT_WINDOW::TRIAG: fftWindow = make_unique<WindowingFunction<float>>(
+		static_cast<size_t>(frameLen), WindowingFunction<float>::triangular, false); break;
+	default: assert(!"Not all STFT windowing functions checked");
+	}
 
 	const auto paddedBuff(PadCentered(rawAudio, frameLen, isPadReflected)); // So that frames are centered
 	assert(paddedBuff.size() >= static_cast<size_t>(frameLen) &&
@@ -61,7 +80,7 @@ ShortTimeFourier::ShortTimeFourier(const vector<float>& rawAudio,
 		CopyMemory(stft_.at(i).data(), paddedBuff.data() + static_cast<ptrdiff_t>(i) * hopLen,
 			frameLen * sizeof paddedBuff.front()); // The last two floats (one complex) is currently empty
 
-		fftWindow.multiplyWithWindowingTable(reinterpret_cast<float*>(
+		fftWindow->multiplyWithWindowingTable(reinterpret_cast<float*>(
 			stft_.at(i).data()), stft_.at(i).size() * 2);
 		// Conjugate to match phase from DPWE code:
 		fft.performRealOnlyForwardTransform(reinterpret_cast<float*>(stft_.at(i).data()), true);

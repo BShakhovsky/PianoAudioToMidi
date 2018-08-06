@@ -51,10 +51,10 @@
     <ClInclude Include="ShortTimeFourier.h">
       <Filter>Header Files\Audio Transforms</Filter>
     </ClInclude>
-    <ClInclude Include="CqBasis.h">
+    <ClInclude Include="CqtError.h">
       <Filter>Header Files\Audio Transforms</Filter>
     </ClInclude>
-    <ClInclude Include="CqtError.h">
+    <ClInclude Include="CqtBasis.h">
       <Filter>Header Files\Audio Transforms</Filter>
     </ClInclude>
   </ItemGroup>
@@ -74,7 +74,7 @@
     <ClCompile Include="ShortTimeFourier.cpp">
       <Filter>Source Files\AudioTransforms</Filter>
     </ClCompile>
-    <ClCompile Include="CqBasis.cpp">
+    <ClCompile Include="CqtBasis.cpp">
       <Filter>Source Files\AudioTransforms</Filter>
     </ClCompile>
   </ItemGroup>
