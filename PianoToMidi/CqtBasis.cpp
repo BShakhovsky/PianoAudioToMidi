@@ -108,4 +108,5 @@ CqtBasis::CqtBasis(const int rate, const float fMin, const size_t nBins, const i
 	}
 
 	// TODO: Sparsify the fft basis with quantile=sparsity
+	UNREFERENCED_PARAMETER(sparsity);
 }
