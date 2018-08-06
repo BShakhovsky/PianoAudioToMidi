@@ -19,10 +19,10 @@
     <Filter Include="Source Files\FFmpeg">
       <UniqueIdentifier>{7fbf5e01-5a67-4109-9431-15a99f796c24}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\Audio Transforms">
+    <Filter Include="Header Files\Spectrums">
       <UniqueIdentifier>{e01df327-4c16-4770-a6c5-8239744fff90}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Audio Transforms">
+    <Filter Include="Source Files\Spectrums">
       <UniqueIdentifier>{54882ce4-97bd-4be7-bd41-8dc87153cabc}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -49,16 +49,19 @@
       <Filter>Header Files\FFmpeg</Filter>
     </ClInclude>
     <ClInclude Include="ShortTimeFourier.h">
-      <Filter>Header Files\Audio Transforms</Filter>
+      <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
     <ClInclude Include="CqtError.h">
-      <Filter>Header Files\Audio Transforms</Filter>
+      <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
     <ClInclude Include="CqtBasis.h">
-      <Filter>Header Files\Audio Transforms</Filter>
+      <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
     <ClInclude Include="StftData.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Spectrums</Filter>
+    </ClInclude>
+    <ClInclude Include="CqtBasisData.h">
+      <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -75,13 +78,16 @@
       <Filter>Source Files\FFmpeg</Filter>
     </ClCompile>
     <ClCompile Include="ShortTimeFourier.cpp">
-      <Filter>Source Files\Audio Transforms</Filter>
+      <Filter>Source Files\Spectrums</Filter>
     </ClCompile>
     <ClCompile Include="CqtBasis.cpp">
-      <Filter>Source Files\Audio Transforms</Filter>
+      <Filter>Source Files\Spectrums</Filter>
     </ClCompile>
     <ClCompile Include="StftData.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Spectrums</Filter>
+    </ClCompile>
+    <ClCompile Include="CqtBasisData.cpp">
+      <Filter>Source Files\Spectrums</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
