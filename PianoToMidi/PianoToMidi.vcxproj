@@ -193,6 +193,7 @@
     <ClInclude Include="Frame.h" />
     <ClInclude Include="Packet.h" />
     <ClInclude Include="MonoResampler.h" />
+    <ClInclude Include="SparseMatrix.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="StftData.h" />
     <ClInclude Include="targetver.h" />
@@ -204,6 +205,7 @@
     <ClCompile Include="FFmpegError.cpp" />
     <ClCompile Include="ShortTimeFourier.cpp" />
     <ClCompile Include="MonoResampler.cpp" />
+    <ClCompile Include="SparseMatrix.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

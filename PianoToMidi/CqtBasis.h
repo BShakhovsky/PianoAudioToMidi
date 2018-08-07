@@ -12,6 +12,7 @@ public:
 	void Calculate(float sparsity) const;
 
 	const std::vector<std::vector<std::complex<float>>>& GetCqtFilters() const;
+	const std::vector<std::complex<float>>& GetFlatFilers() const;
 private:
 	const std::unique_ptr<struct CqtBasisData> data_;
 

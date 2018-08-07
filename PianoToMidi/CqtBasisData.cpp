@@ -2,9 +2,11 @@
 #include "AlignedVector.h"
 #include "CqtBasis.h"
 #include "CqtBasisData.h"
+#include "SparseMatrix.h"
 #include "CqtError.h"
 
 using namespace std;
+using boost::alignment::is_aligned;
 typedef CqtBasis::CQT_WINDOW WIN_FUNC;
 
 CqtBasisData::CqtBasisData(const int rate, const float fMin, const size_t nBins, const int octave,
@@ -12,8 +14,7 @@ CqtBasisData::CqtBasisData(const int rate, const float fMin, const size_t nBins,
 	: rate_(rate), window_(window),
 	Q_(scale / (pow(2.f, 1.f / octave) - 1)),
 	freqs_(nBins), lens_(nBins),
-	bInd_(0), offset_(0), buff_(nullptr), size_(0),
-	isSparse_(false)
+	bInd_(0), offset_(0), buff_(nullptr), size_(0)
 {
 	using juce::dsp::FFT;
 
@@ -35,6 +36,9 @@ CqtBasisData::CqtBasisData(const int rate, const float fMin, const size_t nBins,
 		"Mistake in rounding to the nearest integral power of 2");
 }
 
+CqtBasisData::~CqtBasisData() {}
+
+
 void CqtBasisData::Calculate(const float sparsity)
 {
 	for (size_t i(0); i < filts_.size(); ++i)
@@ -46,17 +50,36 @@ void CqtBasisData::Calculate(const float sparsity)
 		FilterFft();
 	}
 
+	assert(filts_.size() == freqs_.size() && freqs_.size() == lens_.size() &&
+		"Mistake in CQT-basis array sizes");
+#ifdef _DEBUG
+	for (const auto& f : filts_) assert(f.size() == nFft_ / 2 && "Wrong CQT-basis filter size");
+#endif
+
 	SparsifyRows(sparsity);
 }
 
-void CqtBasisData::Multiply() const
+void CqtBasisData::RowMajorMultiply(const MKL_Complex8* src, MKL_Complex8* dest, const int nDestCols) const
 {
-	if (not isSparse_)
+	// If there are 99.9% of zeros, then mult time may be milliseconds instead of seconds:
+	if (csr_) csr_->RowMajorMultiply(src, dest, nDestCols);
+	else // If not, dense multiplication would be quicker:
 	{
-//		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, alpha, A, k, B, n, beta, C, n);
+		complex<float> alpha(1), beta(0);
+
+//		A = (double *)mkl_malloc(m*k * sizeof(double), 64);
+//		B = (double *)mkl_malloc(k*n * sizeof(double), 64);
+//		C = (double *)mkl_malloc(m*n * sizeof(double), 64);
+//
+//		m, n, k, alpha, a, lda, b, ldb, beta, c, ldc)
+//		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+//			m, n, k, alpha, A, k, B, n, beta, C, n);
+
+		cblas_cgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, static_cast<int>(filts_.size()),
+			nDestCols, static_cast<int>(filts_.front().size()), &alpha, filtsFlat_.data(),
+			static_cast<int>(filts_.front().size()), src, nDestCols, &beta, dest, nDestCols);
 	}
 }
-
 
 void CqtBasisData::CalcFrequencies(const float fMin, const int octave)
 {
@@ -70,6 +93,8 @@ void CqtBasisData::CalcFrequencies(const float fMin, const int octave)
 		freqs_.at(i) = fMin * pow(2.f, static_cast<float>(i) / octave);
 	assert(freqs_.back() * (1 + 0.5 * WIN_BAND_WIDTH[static_cast<int>(window_)] / Q_) <= rate_ / 2. &&
 		"Filter pass-band lies beyond Nyquist");
+
+	assert(is_aligned(freqs_.data(), 64) && "CQT frequencies are not aligned");
 }
 
 void CqtBasisData::CalcLengths()
@@ -77,7 +102,9 @@ void CqtBasisData::CalcLengths()
 	// Fractional lengths of each filter
 	const auto unusedIter(transform(freqs_.cbegin(), freqs_.cend(), lens_.begin(),
 		[this](float freq) { return Q_ * rate_ / freq; }));
-	assert(lens_.front() == *max_element(lens_.cbegin(), lens_.cend()));
+	assert(lens_.front() == *max_element(lens_.cbegin(), lens_.cend()) &&
+		"Mistake in CQT-basis filter lengths");
+	assert(is_aligned(lens_.data(), 64) && "CQT-basis filter lengths are not aligned");
 }
 
 
@@ -86,6 +113,8 @@ void CqtBasisData::CalcBufferPointers(const size_t binIndex)
 	bInd_ = binIndex;
 	offset_ = (filts_.at(binIndex).size() - static_cast<size_t>(lens_.at(binIndex)) - 1) / 2;
 	buff_ = reinterpret_cast<Ipp32fc*>(filts_.at(binIndex).data()) + offset_;
+	// TODO:
+//	assert(is_aligned(buff_, 64) && "CQT-basis filters are not aligned");
 	size_ = static_cast<int>(ceil(lens_.at(binIndex)));
 }
 
@@ -157,32 +186,86 @@ void CqtBasisData::Normalize() const
 
 void CqtBasisData::FilterFft()
 {
+	// TODO:
+//	assert(is_aligned(filts_.at(bInd_).data()_, 64) && "CQT-basis filters are not aligned");
 	fft_->perform(filts_.at(bInd_).data(), filts_.at(bInd_).data(), false);
 	filts_.at(bInd_).resize(nFft_ / 2); // Retain only the non-negative frequencies
+	// TODO:
+//	assert(is_aligned(filts_.at(bInd_).data()_, 64) && "CQT-basis filters are not aligned");
 }
 
 
 void CqtBasisData::SparsifyRows(const float quantile)
 {
-	assert(0 <= quantile and quantile < 1 && "Quantile should be between zero and one");
-	isSparse_ = quantile > 0;
-	if (not isSparse_) return; // Dense matrix multiplication will be faster
-	// However, if quantile > 0, it will zero-out 99.9% of values, then sparse mult will make sense
+	auto startTime(dsecnd());
 
+	assert(0 <= quantile and quantile < 1 && "Quantile should be between zero and one");
+	if (quantile == 0) return; /* Dense matrix multiplication will be faster
+	However, if quantile > 0, it will zero-out 99.9% of values, then sparse mult will make sense
+	Especially if num filters = not 88, but one octave (12 * nBins),
+	then multiplication time will be milliseconds compared to seconds */
+
+	string errMsg;
 	IppSizeL radixSize;
-	ippsSortRadixGetBufferSize_L(static_cast<IppSizeL>(filts_.front().size()), ipp32f, &radixSize);
+	auto status(ippsSortRadixGetBufferSize_L(static_cast<IppSizeL>(
+		filts_.front().size()), ipp32f, &radixSize));
+	switch (status)
+	{
+	case ippStsNoErr:																break;
+	case ippStsNullPtrErr:	errMsg = "pointer to radix sort buffer size = null";	break;
+	case ippStsSizeErr:		errMsg = "length <= 0";									break;
+	case ippStsDataTypeErr: errMsg = "data type not supported";						break;
+	default:				errMsg = "unknown error";
+	}
+	if (not errMsg.empty()) throw CqtError((
+		"Could not calculate the buffer size for the radix sort function: "
+		+ errMsg + '\n' + ippGetStatusString(status)).c_str());
 	AlignedVector<Ipp8u> radixBuff(static_cast<size_t>(radixSize));
 
-	int nNonZeros(0);
+//#ifdef _DEBUG
+	size_t nNonZeros(0);
+//#endif
 	for (auto& filt : filts_)
 	{
+		errMsg.clear();
 		AlignedVector<Ipp32f> mags(filt.size());
-		ippsMagnitude_32fc(reinterpret_cast<Ipp32fc*>(filt.data()), mags.data(),
+		status = ippsMagnitude_32fc(reinterpret_cast<Ipp32fc*>(filt.data()), mags.data(),
 			static_cast<int>(filt.size()));
+		switch (status)
+		{
+		case ippStsNoErr:															break;
+		case ippStsNullPtrErr:	errMsg = "any of the specified pointers is null";	break;
+		case ippStsSizeErr:		errMsg = "length <= 0";								break;
+		default:				errMsg = "unknown error";
+		}
+		if (not errMsg.empty()) throw CqtError(("Could not calculate CQT-basis complex filter magnitudes: "
+			+ errMsg + '\n' + ippGetStatusString(status)).c_str());
+
+		errMsg.clear();
 		auto magsSort(mags);
-		ippsSortRadixAscend_32f_I_L(magsSort.data(), static_cast<int>(magsSort.size()), radixBuff.data());
+		status = ippsSortRadixAscend_32f_I_L(magsSort.data(), static_cast<int>(magsSort.size()), radixBuff.data());
+		switch (status)
+		{
+		case ippStsNoErr:																			break;
+		case ippStsNullPtrErr:	errMsg = "either source buffer or internal buffer pointer is null";	break;
+		case ippStsSizeErr:		errMsg = "length <= 0";												break;
+		default:				errMsg = "unknown error";
+		}
+		if (not errMsg.empty()) throw CqtError(("Could not radix-sort CQT-basis filter magnitudes: "
+			+ errMsg + '\n' + ippGetStatusString(status)).c_str());
+
+		errMsg.clear();
 		Ipp32f l1Norm;
-		ippsSum_32f(magsSort.data(), static_cast<int>(magsSort.size()), &l1Norm, ippAlgHintFast);
+		status = ippsSum_32f(magsSort.data(), static_cast<int>(magsSort.size()), &l1Norm, ippAlgHintFast);
+		switch (status)
+		{
+		case ippStsNoErr:																			break;
+		case ippStsNullPtrErr:	errMsg = "either source buffer or pointer to sum value is null";	break;
+		case ippStsSizeErr:		errMsg = "length <= 0";												break;
+		default:				errMsg = "unknown error";
+		}
+		if (not errMsg.empty()) throw CqtError(("Could not sum CQT-basis filter magnitudes: "
+			+ errMsg + '\n' + ippGetStatusString(status)).c_str());
 
 		auto threshold(quantile * l1Norm);
 		for (size_t i(0); i < magsSort.size(); ++i)
@@ -196,43 +279,50 @@ void CqtBasisData::SparsifyRows(const float quantile)
 		}
 		for (size_t i(0); i < filt.size(); ++i)
 			if (mags.at(i) < threshold) filt.at(i) = 0;
+//#ifdef _DEBUG
 			else ++nNonZeros;
+//#endif
 	}
 
-	cout << nNonZeros << endl;
+	// Now, after all calculations are completed, it is convenient time to flatten the array:
+	filtsFlat_.assign(filts_.size() * filts_.front().size(), 0);
+	vector<complex<float>>::iterator unusedIter;
+	for (size_t j(0); j < filts_.size(); ++j) unusedIter = copy(filts_.at(j).cbegin(),
+		filts_.at(j).cend(), filtsFlat_.begin() + static_cast<ptrdiff_t>(j * filts_.at(j).size()));
 
-	/*
-	const auto A_nnz = m * k, A_rownum = m, A_colnum = k;
-	MKL_INT info = 0; // If info = 0, execution of mkl_zdnscsr was successful.
+	// TODO:
+//	assert(is_aligned(filtsFlat_.data(), 64) && "CQT-basis filters: flat array is not aligned");
 
-	double* A_val = (double*)mkl_malloc(A_nnz * sizeof(double), ALIGN);
-	MKL_INT *A_col = (MKL_INT *)mkl_malloc(A_nnz * sizeof(MKL_INT), ALIGN);
-	MKL_INT *A_row = (MKL_INT *)mkl_malloc((A_rownum + 1) * sizeof(MKL_INT), ALIGN); // +1 is because we are using 3-array variation
 
-#pragma warning(suppress:4996) // was declared deprecated
-	mkl_ddnscsr(job, &A_rownum, &A_colnum, A, &A_colnum, A_val, A_col, A_row, &info);
+	cout << "Zeroing out time = " << dsecnd() - startTime << endl;
 
-	sparse_matrix_t csrA(nullptr);
-	mkl_sparse_d_create_csr(&csrA, SPARSE_INDEX_BASE_ZERO, A_rownum, A_colnum, A_row, A_row + 1, A_col, A_val);
+	int nDestCols(16'000);
+	AlignedVector<MKL_Complex8> src(filts_.front().size() * nDestCols), dst(filts_.size() * nDestCols);
+	const int nLoops(10);
+	RowMajorMultiply(src.data(), dst.data(), nDestCols);
+	startTime = dsecnd();
+	for (int i(0); i < nLoops; ++i) RowMajorMultiply(src.data(), dst.data(), nDestCols);
+	cout << "Dense multiplication time = " << (dsecnd() - startTime) / nLoops << endl;
+	system("Pause");
 
-	matrix_descr descr{ SPARSE_MATRIX_TYPE_GENERAL, SPARSE_FILL_MODE_FULL };
-	mkl_sparse_d_mm(SPARSE_OPERATION_NON_TRANSPOSE, 1, csrA, descr,
-		SPARSE_LAYOUT_ROW_MAJOR, B, n, n, 0, C, n);
+	startTime = dsecnd();
+	csr_ = make_unique<SparseMatrix>(reinterpret_cast<MKL_Complex8*>(filtsFlat_.data()),
+		static_cast<int>(filts_.size()), static_cast<int>(filts_.front().size()),
+#ifdef _DEBUG
+//		nNonZeros
+		filtsFlat_.size() // just a little bit quicker not to calculate num non-zeros
+#elif defined NDEBUG
+		nNonZeros
+//		filtsFlat_.size() // just a little bit quicker not to calculate num non-zeros
+#else
+#	error Not debug, not release, then what is it?
+#endif
+		);
+	cout << "Dense to sparse conversion time = " << dsecnd() - startTime << endl;
 
-	//Release matrix handle and deallocate arrays for which we allocate memory ourselves.
-	if (mkl_sparse_destroy(csrA) != SPARSE_STATUS_SUCCESS) status = 3;
-
-	//Deallocate arrays for which we allocate memory ourselves.
-	mkl_free(A_val); mkl_free(A_col); mkl_free(A_row);
-
-	printf("\n Deallocating memory \n\n");
-	mkl_free(A);
-	mkl_free(B);
-	mkl_free(C);
-
-	const int job[] = { 0, 0, 0, 2, A_nnz, 1 };
-	const int m(static_cast<int>(filts_.size())), n(static_cast<int>(filts_.front().size())),
-		lda(max(1, n));
-	mkl_cdnscsr(job, &m, &n, filts_.data(), &lda, MKL_Complex8* Acsr, int * AJ, int *Al, int *info);
-	*/
+	RowMajorMultiply(src.data(), dst.data(), nDestCols);
+	startTime = dsecnd();
+	for (int i(0); i < nLoops; ++i) RowMajorMultiply(src.data(), dst.data(), nDestCols);
+	cout << "Sparse multiplication time = " << (dsecnd() - startTime) / nLoops << endl;
+	system("Pause");
 }

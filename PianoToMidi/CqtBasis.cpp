@@ -18,3 +18,4 @@ CqtBasis::~CqtBasis() {}
 void CqtBasis::Calculate(const float sparsity) const { data_->Calculate(sparsity); }
 
 const vector<vector<complex<float>>>& CqtBasis::GetCqtFilters() const { return data_->filts_; }
+const vector<complex<float>>& CqtBasis::GetFlatFilers() const { return data_->filtsFlat_; }

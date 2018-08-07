@@ -2,12 +2,16 @@
 
 struct CqtBasisData
 {
+	// TODO: AlignedVector:
 	std::vector<std::vector<std::complex<float>>> filts_;
+	std::vector<std::complex<float>> filtsFlat_;
 
 	explicit CqtBasisData(int rate, float fMin, size_t nBins, int octave,
 		int scale, int hopLen, CqtBasis::CQT_WINDOW window);
+	~CqtBasisData();
+
 	void Calculate(float sparsity);
-	void Multiply() const;
+	void RowMajorMultiply(const MKL_Complex8* source, MKL_Complex8* dest, int nDestColumnss) const;
 private:
 	void CalcFrequencies(float fMin, int octave);
 	void CalcLengths();
@@ -44,8 +48,7 @@ private:
 #	error Either 32 or 64 bit Windows should be defined
 #endif
 	
-	bool isSparse_;
-	const byte pad3[sizeof(intptr_t) - sizeof(bool)] = { 0 };
+	std::unique_ptr<class SparseMatrix> csr_;
 
 	CqtBasisData(const CqtBasisData&) = delete;
 	CqtBasisData operator=(const CqtBasisData&) = delete;
