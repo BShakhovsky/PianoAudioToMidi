@@ -63,6 +63,9 @@
     <ClInclude Include="CqtBasisData.h">
       <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
+    <ClInclude Include="AlignedVector.h">
+      <Filter>Header Files\Spectrums</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

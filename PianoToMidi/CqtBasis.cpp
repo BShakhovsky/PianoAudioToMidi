@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "AlignedVector.h"
 #include "CqtBasis.h"
 #include "CqtBasisData.h"
 
@@ -9,7 +10,10 @@ CqtBasis::CqtBasis(const int rate, const float fMin, const size_t nBins, const i
 	: data_(make_unique<CqtBasisData>(rate, fMin, nBins, octave, scale, hopLen, window))
 {}
 
+#pragma warning(push)
+#pragma warning(disable:4710) // Function not inlined
 CqtBasis::~CqtBasis() {}
+#pragma warning(pop)
 
 void CqtBasis::Calculate(const float sparsity) const { data_->Calculate(sparsity); }
 

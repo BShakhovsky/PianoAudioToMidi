@@ -5,11 +5,11 @@ class CqtBasis
 public:
 	enum class CQT_WINDOW { RECT, HANN, HAMMING };
 
-	explicit CqtBasis(int sampleRate, float fMin, size_t nBins = 88, int binsPerOctave = 12,
-		int filterScale = 1, int hopLen = 0, CQT_WINDOW window = CQT_WINDOW::HANN);
+	explicit CqtBasis(int sampleRate, float fMin, size_t nBins, int binsPerOctave,
+		int filterScale, int hopLen = 0, CQT_WINDOW window = CQT_WINDOW::HANN);
 	~CqtBasis();
 
-	void Calculate(float sparsity = .01f) const;
+	void Calculate(float sparsity) const;
 
 	const std::vector<std::vector<std::complex<float>>>& GetCqtFilters() const;
 private:

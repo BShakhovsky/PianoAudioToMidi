@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "AlignedVector.h"
 #include "CqtBasis.h"
 #include "CqtBasisData.h"
 #include "CqtError.h"
@@ -11,13 +12,15 @@ CqtBasisData::CqtBasisData(const int rate, const float fMin, const size_t nBins,
 	: rate_(rate), window_(window),
 	Q_(scale / (pow(2.f, 1.f / octave) - 1)),
 	freqs_(nBins), lens_(nBins),
-	bInd_(0), offset_(0), buff_(nullptr), size_(0)
+	bInd_(0), offset_(0), buff_(nullptr), size_(0),
+	isSparse_(false)
 {
 	using juce::dsp::FFT;
 
 	assert(nBins > 0 && "Number of bins must be positive");
+	assert(scale > 0 && "Filter scale must be positive");
 
-	CalcFrequencies(fMin, octave, scale);
+	CalcFrequencies(fMin, octave);
 	CalcLengths();
 
 	// All filters will be center-padded up to the nearest integral power of 2:
@@ -43,16 +46,22 @@ void CqtBasisData::Calculate(const float sparsity)
 		FilterFft();
 	}
 
-	// TODO: Sparsify the fft basis with quantile=sparsity
-	UNREFERENCED_PARAMETER(sparsity);
+	SparsifyRows(sparsity);
+}
+
+void CqtBasisData::Multiply() const
+{
+	if (not isSparse_)
+	{
+//		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, alpha, A, k, B, n, beta, C, n);
+	}
 }
 
 
-void CqtBasisData::CalcFrequencies(const float fMin, const int octave, const int scale)
+void CqtBasisData::CalcFrequencies(const float fMin, const int octave)
 {
 	assert(fMin > 0 && "Minimum frequency must be positive");
 	assert(octave > 0 && "Bins per octave must be positive");
-	assert(scale > 0 && "Filter scale must be positive");
 
 	// Equivalent noise bandwidth (int FFT bins) of a window function:
 	constexpr double WIN_BAND_WIDTH[] = { 1., 1.50018310546875, 1.3629455320350348 };
@@ -138,7 +147,7 @@ void CqtBasisData::Normalize() const
 	case ippStsNoErr:																break;
 	case ippStsNullPtrErr:		errMsg = "buffer pointer is null";					break;
 	case ippStsSizeErr:			errMsg = "length <= 0";								break;
-		//	case ippStsDivByZeroErr:	errMsg = "division by value < min float number";	break;
+//	case ippStsDivByZeroErr:	errMsg = "division by value < min float number";	break;
 	default:					errMsg = "unknown error";
 	}
 	if (not errMsg.empty()) throw CqtError((
@@ -150,4 +159,80 @@ void CqtBasisData::FilterFft()
 {
 	fft_->perform(filts_.at(bInd_).data(), filts_.at(bInd_).data(), false);
 	filts_.at(bInd_).resize(nFft_ / 2); // Retain only the non-negative frequencies
+}
+
+
+void CqtBasisData::SparsifyRows(const float quantile)
+{
+	assert(0 <= quantile and quantile < 1 && "Quantile should be between zero and one");
+	isSparse_ = quantile > 0;
+	if (not isSparse_) return; // Dense matrix multiplication will be faster
+	// However, if quantile > 0, it will zero-out 99.9% of values, then sparse mult will make sense
+
+	IppSizeL radixSize;
+	ippsSortRadixGetBufferSize_L(static_cast<IppSizeL>(filts_.front().size()), ipp32f, &radixSize);
+	AlignedVector<Ipp8u> radixBuff(static_cast<size_t>(radixSize));
+
+	int nNonZeros(0);
+	for (auto& filt : filts_)
+	{
+		AlignedVector<Ipp32f> mags(filt.size());
+		ippsMagnitude_32fc(reinterpret_cast<Ipp32fc*>(filt.data()), mags.data(),
+			static_cast<int>(filt.size()));
+		auto magsSort(mags);
+		ippsSortRadixAscend_32f_I_L(magsSort.data(), static_cast<int>(magsSort.size()), radixBuff.data());
+		Ipp32f l1Norm;
+		ippsSum_32f(magsSort.data(), static_cast<int>(magsSort.size()), &l1Norm, ippAlgHintFast);
+
+		auto threshold(quantile * l1Norm);
+		for (size_t i(0); i < magsSort.size(); ++i)
+		{
+			l1Norm -= magsSort.at(magsSort.size() - i - 1);
+			if (l1Norm < threshold)
+			{
+				threshold = magsSort.at(magsSort.size() - i - 1);
+				break;
+			}
+		}
+		for (size_t i(0); i < filt.size(); ++i)
+			if (mags.at(i) < threshold) filt.at(i) = 0;
+			else ++nNonZeros;
+	}
+
+	cout << nNonZeros << endl;
+
+	/*
+	const auto A_nnz = m * k, A_rownum = m, A_colnum = k;
+	MKL_INT info = 0; // If info = 0, execution of mkl_zdnscsr was successful.
+
+	double* A_val = (double*)mkl_malloc(A_nnz * sizeof(double), ALIGN);
+	MKL_INT *A_col = (MKL_INT *)mkl_malloc(A_nnz * sizeof(MKL_INT), ALIGN);
+	MKL_INT *A_row = (MKL_INT *)mkl_malloc((A_rownum + 1) * sizeof(MKL_INT), ALIGN); // +1 is because we are using 3-array variation
+
+#pragma warning(suppress:4996) // was declared deprecated
+	mkl_ddnscsr(job, &A_rownum, &A_colnum, A, &A_colnum, A_val, A_col, A_row, &info);
+
+	sparse_matrix_t csrA(nullptr);
+	mkl_sparse_d_create_csr(&csrA, SPARSE_INDEX_BASE_ZERO, A_rownum, A_colnum, A_row, A_row + 1, A_col, A_val);
+
+	matrix_descr descr{ SPARSE_MATRIX_TYPE_GENERAL, SPARSE_FILL_MODE_FULL };
+	mkl_sparse_d_mm(SPARSE_OPERATION_NON_TRANSPOSE, 1, csrA, descr,
+		SPARSE_LAYOUT_ROW_MAJOR, B, n, n, 0, C, n);
+
+	//Release matrix handle and deallocate arrays for which we allocate memory ourselves.
+	if (mkl_sparse_destroy(csrA) != SPARSE_STATUS_SUCCESS) status = 3;
+
+	//Deallocate arrays for which we allocate memory ourselves.
+	mkl_free(A_val); mkl_free(A_col); mkl_free(A_row);
+
+	printf("\n Deallocating memory \n\n");
+	mkl_free(A);
+	mkl_free(B);
+	mkl_free(C);
+
+	const int job[] = { 0, 0, 0, 2, A_nnz, 1 };
+	const int m(static_cast<int>(filts_.size())), n(static_cast<int>(filts_.front().size())),
+		lda(max(1, n));
+	mkl_cdnscsr(job, &m, &n, filts_.data(), &lda, MKL_Complex8* Acsr, int * AJ, int *Al, int *info);
+	*/
 }
