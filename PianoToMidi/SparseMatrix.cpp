@@ -2,27 +2,34 @@
 #include "SparseMatrix.h"
 #include "AlignedVector.h"
 
-inline void CheckMKLresult(sparse_status_t status)
+#ifdef _DEBUG
+void CheckMKLresult(sparse_status_t status)
 {
 	switch (status)
 	{
 	case SPARSE_STATUS_SUCCESS:										break;
-	case SPARSE_STATUS_NOT_INITIALIZED:		assert(!"Sparse matrix handle deallocation" and
+	case SPARSE_STATUS_NOT_INITIALIZED:		assert(not
 		"The routine encountered an empty handle or matrix array");	break;
-	case SPARSE_STATUS_ALLOC_FAILED:		assert(!"Sparse matrix handle deallocation" and
+	case SPARSE_STATUS_ALLOC_FAILED:		assert(not
 		"Internal memory allocation failed");						break;
-	case SPARSE_STATUS_INVALID_VALUE:		assert(!"Sparse matrix handle deallocation" and
+	case SPARSE_STATUS_INVALID_VALUE:		assert(not
 		"The input parameters contain an invalid value");			break;
-	case SPARSE_STATUS_EXECUTION_FAILED:	assert(!"Sparse matrix handle deallocation" and
+	case SPARSE_STATUS_EXECUTION_FAILED:	assert(not
 		"Execution failed");										break;
-	case SPARSE_STATUS_INTERNAL_ERROR:		assert(!"Sparse matrix handle deallocation" and
+	case SPARSE_STATUS_INTERNAL_ERROR:		assert(not
 		"An error in algorithm implementation occurred");			break;
-	case SPARSE_STATUS_NOT_SUPPORTED:		assert(!"Sparse matrix handle deallocation" and
+	case SPARSE_STATUS_NOT_SUPPORTED:		assert(not
 		"The requested operation is not supported");				break;
-	default:								assert(!"Sparse matrix handle deallocation" and
+	default:								assert(not
 		"Unknown error");
 	}
 }
+#	define CHECK_MKL_RESULT(STATUS) CheckMKLresult(STATUS)
+#elif defined NDEBUG
+#	define CHECK_MKL_RESULT(STATUS) STATUS
+#else
+#	error Not debug, not release, then what is it?
+#endif
 
 SparseMatrix::SparseMatrix(MKL_Complex8* dense, const int nRows, const int nCols, const size_t nNonZeros)
 {
@@ -40,7 +47,7 @@ SparseMatrix::SparseMatrix(MKL_Complex8* dense, const int nRows, const int nCols
 		"The routine is interrupted processing the info-th row, because there is no space" &&
 		"in the value array and column-indices array according to the nNonZeros");
 
-	CheckMKLresult(mkl_sparse_c_create_csr(&csr_, SPARSE_INDEX_BASE_ZERO, nRows, nCols,
+	CHECK_MKL_RESULT(mkl_sparse_c_create_csr(&csr_, SPARSE_INDEX_BASE_ZERO, nRows, nCols,
 		A_row.data(), A_row.data() + 1, A_col.data(), A_val.data()));
 
 	assert(is_aligned(A_val.data(), 64) && "Sparse matrix values are not aligned");
@@ -52,13 +59,13 @@ SparseMatrix::SparseMatrix(MKL_Complex8* dense, const int nRows, const int nCols
 
 #pragma warning(push)
 #pragma warning(disable:4711) // Selected for automatic inline expansion
-SparseMatrix::~SparseMatrix() { if (csr_) CheckMKLresult(mkl_sparse_destroy(csr_)); }
+SparseMatrix::~SparseMatrix() { if (csr_) CHECK_MKL_RESULT(mkl_sparse_destroy(csr_)); }
 #pragma warning(pop)
 
 void SparseMatrix::RowMajorMultiply(const MKL_Complex8* src,
 	MKL_Complex8* res, const int nDestCols) const
 {
 	matrix_descr descr{ SPARSE_MATRIX_TYPE_GENERAL, SPARSE_FILL_MODE_FULL };
-	CheckMKLresult(mkl_sparse_c_mm(SPARSE_OPERATION_NON_TRANSPOSE, { 1, 0 }, csr_, descr,
+	CHECK_MKL_RESULT(mkl_sparse_c_mm(SPARSE_OPERATION_NON_TRANSPOSE, { 1, 0 }, csr_, descr,
 		SPARSE_LAYOUT_ROW_MAJOR, src, nDestCols, nDestCols, { 0, 0 }, res, nDestCols));
 }
