@@ -69,6 +69,9 @@
     <ClInclude Include="ConstantQ.h">
       <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
+    <ClInclude Include="IntelCheckStatus.h">
+      <Filter>Header Files\Spectrums</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -96,6 +99,9 @@
       <Filter>Source Files\Spectrums</Filter>
     </ClCompile>
     <ClCompile Include="ConstantQ.cpp">
+      <Filter>Source Files\Spectrums</Filter>
+    </ClCompile>
+    <ClCompile Include="IntelCheckStatus.cpp">
       <Filter>Source Files\Spectrums</Filter>
     </ClCompile>
   </ItemGroup>

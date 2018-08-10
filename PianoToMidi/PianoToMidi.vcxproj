@@ -189,6 +189,7 @@
     <ClInclude Include="CqtBasis.h" />
     <ClInclude Include="CqtError.h" />
     <ClInclude Include="FFmpegError.h" />
+    <ClInclude Include="IntelCheckStatus.h" />
     <ClInclude Include="ShortTimeFourier.h" />
     <ClInclude Include="Frame.h" />
     <ClInclude Include="Packet.h" />
@@ -205,6 +206,7 @@
     <ClCompile Include="FFmpegError.cpp" />
     <ClCompile Include="ShortTimeFourier.cpp" />
     <ClCompile Include="MonoResampler.cpp" />
+    <ClCompile Include="IntelCheckStatus.cpp" />
     <ClCompile Include="SparseMatrix.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

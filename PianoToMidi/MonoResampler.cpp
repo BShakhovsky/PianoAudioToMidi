@@ -6,6 +6,8 @@ using namespace std;
 
 MonoResampler::~MonoResampler()
 {
+	assert(srcData_ and dstData_ and "Did you call Resample? If not, why did you instantiate this class?");
+
 	if (srcData_) av_freep(&srcData_[0]);
 	av_freep(&srcData_);
 
@@ -19,6 +21,9 @@ pair<const uint8_t*, size_t> MonoResampler::Resample(uint8_t* srcData, const siz
 	int srcChannels, const int srcRate, const int dstRate,
 	const AVSampleFormat srcSampleFmt, const AVSampleFormat dstSampleFmt)
 {
+	assert(not srcData_ and not dstData_ and
+		"Resample must be called just once, then destructor should deallocate all internal data");
+
 	context_ = swr_alloc_set_opts(context_, av_get_default_channel_layout(1),
 		dstSampleFmt, static_cast<int>(dstRate), av_get_default_channel_layout(srcChannels),
 		srcSampleFmt, static_cast<int>(srcRate), 0, nullptr);

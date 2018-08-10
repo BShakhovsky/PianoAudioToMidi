@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "AudioLoader.h"
+#include "FFmpegError.h"
 #include "MonoResampler.h"
 #include "Frame.h"
 #include "Packet.h"
@@ -47,17 +48,28 @@ const char* AudioLoader::GetFormatName() const { return data_->formatContext->if
 const char* AudioLoader::GetCodecName() const { return data_->codec->long_name; }
 int64_t AudioLoader::GetBitRate() const { return data_->codecParams->bit_rate; }
 
-const vector<uint8_t>& AudioLoader::GetRawData() const
+uint8_t* AudioLoader::GetRawData()
 {
 	assert("Did you call Decode()?" && !data_->rawData.empty());
-	return data_->rawData;
+	return data_->rawData.data();
 }
+size_t AudioLoader::GetNumBytes() const
+{
+	assert("Did you call Decode()?" && !data_->rawData.empty());
+	return data_->rawData.size();
+}
+int AudioLoader::GetBytesPerSample() const
+{
+	auto result(av_get_bytes_per_sample(data_->codecContext->sample_fmt));
+	if (result == 0) throw FFmpegError("Could not determine number of bytes per sample");
+	return result;
+}
+size_t AudioLoader::GetNumSamples() const { return GetNumBytes() / GetBytesPerSample(); }
+int AudioLoader::GetSampleRate() const { return data_->codecContext->sample_rate; }
 size_t AudioLoader::GetNumSeconds() const
 {
 	assert("Did you call Decode()?" && !data_->rawData.empty());
-	auto bytesPerSample(av_get_bytes_per_sample(data_->codecContext->sample_fmt));
-	if (bytesPerSample == 0) throw FFmpegError("Could not determine number of bytes per sample");
-	return data_->rawData.size() / bytesPerSample / data_->codecContext->sample_rate;
+	return data_->rawData.size() / GetBytesPerSample() / GetSampleRate();
 }
 
 #pragma warning(push)
@@ -127,11 +139,12 @@ void AudioLoader::Decode() const
 	if (data_->codecContext->codec->capabilities & AV_CODEC_CAP_DELAY) while (DecodePacket() >= 0);
 }
 
-void AudioLoader::MonoResample(int rate, const AVSampleFormat format) const
+void AudioLoader::MonoResample(int rate, const bool isFloatFmt) const
 {
 	assert("Did you call Decode()?" && !data_->rawData.empty());
 
 	if (rate == 0) rate = data_->codecContext->sample_rate;
+	const auto format(isFloatFmt ? AV_SAMPLE_FMT_FLT : AV_SAMPLE_FMT_S16);
 	MonoResampler resampler;
 	const auto result(resampler.Resample(data_->rawData.data(), data_->rawData.size(),
 		data_->codecContext->channels, data_->codecContext->sample_rate, rate,

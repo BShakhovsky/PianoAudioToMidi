@@ -1,5 +1,4 @@
 #pragma once
-#include "FFmpegError.h"
 
 class AudioLoader
 {
@@ -12,10 +11,15 @@ public:
 	const char* GetCodecName() const;
 	int64_t GetBitRate() const;
 
-	const std::vector<uint8_t>& GetRawData() const;
+	uint8_t* GetRawData(); // not const to allow data to be overwritten from outside
+	size_t GetNumBytes() const;
+	int GetBytesPerSample() const;
+	size_t GetNumSamples() const;
+	int GetSampleRate() const;
 	size_t GetNumSeconds() const;
 
-	void MonoResample(int rate = 22'050, AVSampleFormat format = AV_SAMPLE_FMT_FLT) const;
+	// If not float, then S16 format for playing with DirectSound:
+	void MonoResample(int rate = 22'050, bool isFloatFormat = true) const;
 private:
 	void FindAudioStream() const;
 	int DecodePacket() const;
