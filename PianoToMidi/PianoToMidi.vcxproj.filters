@@ -57,9 +57,6 @@
     <ClInclude Include="CqtBasis.h">
       <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
-    <ClInclude Include="StftData.h">
-      <Filter>Header Files\Spectrums</Filter>
-    </ClInclude>
     <ClInclude Include="AlignedVector.h">
       <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
@@ -90,9 +87,6 @@
       <Filter>Source Files\Spectrums</Filter>
     </ClCompile>
     <ClCompile Include="CqtBasis.cpp">
-      <Filter>Source Files\Spectrums</Filter>
-    </ClCompile>
-    <ClCompile Include="StftData.cpp">
       <Filter>Source Files\Spectrums</Filter>
     </ClCompile>
     <ClCompile Include="SparseMatrix.cpp">

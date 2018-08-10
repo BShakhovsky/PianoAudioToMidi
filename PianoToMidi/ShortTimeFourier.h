@@ -5,13 +5,27 @@ class ShortTimeFourier
 public:
 	enum class STFT_WINDOW { RECT, HANN, HAMMING, BLACKMAN, BLACKMAN_HARRIS, FLAT_TOP, KAISER, TRIAG };
 
-	explicit ShortTimeFourier(const std::vector<float>& rawAudio, int frameLen = 2'048,
-		int hopLen = 0, STFT_WINDOW window = STFT_WINDOW::HANN, bool isPadReflected = true);
+	explicit ShortTimeFourier(size_t frameLen = 2'048,
+		STFT_WINDOW window = STFT_WINDOW::HANN, bool isPadReflected = true) noexcept;
 	~ShortTimeFourier();
 
-	std::vector<std::vector<std::complex<float>>> RealForward() const;
+	void RealForward(const std::vector<float>& rawAudio, int hopLen = 0);
+	const AlignedVector<std::complex<float>>& GetSTFT() const { return stft_; }
+	size_t GetNumFrames() const { return nFrames_; }
+	size_t GetNumFrequencies() const { return nFreqs_; }
 private:
-	const std::unique_ptr<struct StftData> data_;
+	void PadCentered(const std::vector<float>& source,
+		AlignedVector<float>* dest, bool isModeReflect) const;
+	void GetStftWindow(STFT_WINDOW window);
+
+	const size_t frameLen_;
+	const bool isPadReflect_;
+	const byte pad_[sizeof(intptr_t) - sizeof(bool)]{ 0 };
+	const std::unique_ptr<juce::dsp::FFT> fft_;
+	std::unique_ptr<juce::dsp::WindowingFunction<float>> window_;
+
+	AlignedVector<std::complex<float>> stft_;
+	size_t nFrames_, nFreqs_;
 
 	ShortTimeFourier(const ShortTimeFourier&) = delete;
 	ShortTimeFourier operator=(const ShortTimeFourier&) = delete;
