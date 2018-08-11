@@ -181,7 +181,8 @@ void CqtBasis::SparsifyRows(const float quantile)
 		}
 	}
 
-	// Now, after all calculations are completed, it is convenient time to flatten the array:
+	// Now, after all calculations are completed,
+	// it is convenient time to flatten the array and get rid of 2D-buffer:
 	filtsFlat_.assign(filts_.size() * filts_.front().size(), 0);
 	AlignedVector<complex<float>>::iterator unusedIter;
 	for (size_t j(0); j < filts_.size(); ++j) unusedIter = copy(filts_.at(j).cbegin(),
@@ -191,6 +192,8 @@ void CqtBasis::SparsifyRows(const float quantile)
 
 	if (quantile > 0) csr_ = make_unique<SparseMatrix>(reinterpret_cast<MKL_Complex8*>(filtsFlat_.data()),
 		static_cast<int>(filts_.size()), static_cast<int>(filts_.front().size()), nNonZeros);
+
+	filts_.clear();
 }
 
 
@@ -205,14 +208,15 @@ void CqtBasis::RowMajorMultiply(const MKL_Complex8* src,
 	MKL_Complex8* dest, const int nDestCols) const
 {
 	assert(nDestCols > 0 && "Number of columns in destination matrix must be positive");
+	assert(filtsFlat_.size() == freqs_.size() * (nFft_ / 2 + 1));
 
 	// If there are 99.9% of zeros, then mult time may be milliseconds instead of seconds:
 	if (csr_) csr_->RowMajorMultiply(src, dest, nDestCols);
 	else // If not, dense multiplication would be quicker:
 	{
 		complex<float> alpha(1), beta(0);
-		cblas_cgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, static_cast<int>(filts_.size()),
-			nDestCols, static_cast<int>(filts_.front().size()), &alpha, filtsFlat_.data(),
-			static_cast<int>(filts_.front().size()), src, nDestCols, &beta, dest, nDestCols);
+		cblas_cgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, static_cast<int>(freqs_.size()),
+			nDestCols, static_cast<int>(nFft_ / 2 + 1), &alpha, filtsFlat_.data(),
+			static_cast<int>(nFft_ / 2 + 1), src, nDestCols, &beta, dest, nDestCols);
 	}
 }

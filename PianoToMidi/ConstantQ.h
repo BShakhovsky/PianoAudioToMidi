@@ -15,13 +15,13 @@ public:
 		CQT_WINDOW windowFunc = CQT_WINDOW::HANN, bool toScale = true, bool isPadReflect = true);
 	~ConstantQ();
 
-	const std::vector<std::vector<std::complex<float>>>& GetCQT() const { return cqtResp_; }
+	const AlignedVector<float>& GetCQT() const { return cqt_; }
 private:
 	void EarlyDownsample(bool isKaiserFast, int nOctaves, double nyquist, double filterCutoff);
 	void HalfDownSample(int nOctaves);
 	void Response(size_t nBins);
 	void Trim();
-	void Scale(int sampleRateInitial, float fMin, size_t nBins, bool toScale);
+	void Scale(int sampleRateInitial, float fMin, bool toScale);
 
 	const std::unique_ptr<class CqtBasis> qBasis_;
 	std::unique_ptr<class ShortTimeFourier> stft_;
@@ -33,7 +33,8 @@ private:
 #elif not defined _WIN32
 #	error It should be either 32- or 64-bit Windows
 #endif
-	std::vector<std::vector<std::complex<float>>> cqtResp_;
+	std::vector<std::vector<float>> cqtResp_;
+	AlignedVector<float> cqt_;
 
 	ConstantQ(const ConstantQ&) = delete;
 	ConstantQ operator=(const ConstantQ&) = delete;

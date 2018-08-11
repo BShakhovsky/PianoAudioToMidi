@@ -31,7 +31,6 @@ private:
 
 	std::vector<float> freqs_, lens_;
 
-	// TODO: delete 2D-array:
 	std::vector<std::vector<std::complex<float>>> filts_;
 	AlignedVector<std::complex<float>> filtsFlat_;
 	size_t nFft_;

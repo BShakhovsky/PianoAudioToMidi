@@ -99,7 +99,20 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 
 	assert(cqtResp_.size() == nBins and "Wrong CQT-spectrum size");
 	Trim();
-	Scale(rateInitial, fMin, nBins, toScale);
+	Scale(rateInitial, fMin, toScale);
+
+	// Eventually, we can flatten the array, and get rid of temporary 2D-buffer:
+	cqt_.resize(cqtResp_.size() * cqtResp_.front().size());
+	AlignedVector<float>::iterator unusedIter;
+	for (size_t i(0); i < cqtResp_.size(); ++i) unusedIter = copy(cqtResp_.at(i).cbegin(),
+		cqtResp_.at(i).cend(), cqt_.begin() + static_cast<ptrdiff_t>(i * cqtResp_.at(i).size()));
+
+	MKL_Simatcopy('R', 'T', nBins, cqtResp_.front().size(), 1, cqt_.data(),
+		max(1ull, cqtResp_.front().size()), max(1ull, nBins));
+
+	stft_.reset(); // do not have to do it here, but will not need it anymore,
+	// so we can release it, because it is not const, and it is "unique" pointer
+	cqtResp_.clear();
 }
 
 ConstantQ::~ConstantQ() {}
@@ -162,9 +175,13 @@ void ConstantQ::Response(const size_t nBins)
 	// only after all down-samples are finished, so, now append to the 2D-stack:
 	for (auto i(static_cast<ptrdiff_t>(qBasis_->GetLengths().size()) - 1); i > -1; --i)
 	{
-		cqtResp_.push_back(vector<complex<float>>(stft_->GetNumFrames()));
-		CopyMemory(cqtResp_.back().data(), resp.data() + static_cast<ptrdiff_t>(
-			i * cqtResp_.back().size()), cqtResp_.back().size() * sizeof resp.front());
+		cqtResp_.push_back(vector<float>(stft_->GetNumFrames()));
+		CHECK_IPP_RESULT(ippsMagnitude_32fc(reinterpret_cast<Ipp32fc*>(resp.data()
+			+ static_cast<ptrdiff_t>(i * cqtResp_.back().size())),
+			cqtResp_.back().data(), static_cast<int>(cqtResp_.back().size())));
+
+//		CopyMemory(cqtResp_.back().data(), resp.data() + static_cast<ptrdiff_t>(
+//			i * cqtResp_.back().size()), cqtResp_.back().size() * sizeof resp.front());
 		if (cqtResp_.size() == nBins) return; // Clip out bottom frequencies we do not want
 	}
 
@@ -177,24 +194,23 @@ void ConstantQ::Trim()
 	// And STFT right-end may get truncated several times,
 	// so cleanup framing errors at the right-boundary:
 	const auto minCol(min_element(cqtResp_.cbegin(), cqtResp_.cend(),
-		[](const vector<complex<float>>& lhs, const vector<complex<float>>& rhs)
+		[](const vector<float>& lhs, const vector<float>& rhs)
 	{ return lhs.size() < rhs.size(); })->size());
 	for (auto& resp : cqtResp_) resp.resize(minCol);
 
 	reverse(cqtResp_.begin(), cqtResp_.end());
 }
 
-void ConstantQ::Scale(const int rateInit, const float fMin, const size_t nBins, const bool toScale)
+void ConstantQ::Scale(const int rateInit, const float fMin, const bool toScale)
 {
 	if (not toScale) return;
 
-	qBasis_->CalcLengths(rateInit, fMin, nBins);
-	assert(qBasis_->GetLengths().size() == nBins and cqtResp_.size() == nBins and
+	qBasis_->CalcLengths(rateInit, fMin, cqtResp_.size());
+	assert(cqt_.size() % qBasis_->GetLengths().size() == 0 and
 		"Wrong number of either CQT-lengths or in CQT themselves");
 	CHECK_IPP_RESULT(ippsSqrt_32f_I(qBasis_->GetLengths().data(),
 		static_cast<int>(qBasis_->GetLengths().size())));
 
-	for (size_t i(0); i < cqtResp_.size(); ++i) CHECK_IPP_RESULT(ippsDivC_32fc_I(
-		{ qBasis_->GetLengths().at(i), 0 }, reinterpret_cast<Ipp32fc*>(cqtResp_.at(i).data()),
-		static_cast<int>(cqtResp_.at(i).size())));
+	for (size_t i(0); i < cqtResp_.size(); ++i) CHECK_IPP_RESULT(ippsDivC_32f_I(
+		qBasis_->GetLengths().at(i), cqtResp_.at(i).data(), static_cast<int>(cqtResp_.at(i).size())));
 }
