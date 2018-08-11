@@ -66,9 +66,6 @@
     <ClInclude Include="IntelCheckStatus.h">
       <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
-    <ClInclude Include="CqtDecibels.h">
-      <Filter>Header Files\Spectrums\Onsets</Filter>
-    </ClInclude>
     <ClInclude Include="ConstantQ.h">
       <Filter>Header Files\Spectrums\Core</Filter>
     </ClInclude>
@@ -83,6 +80,9 @@
     </ClInclude>
     <ClInclude Include="SparseMatrix.h">
       <Filter>Header Files\Spectrums\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="HarmonicPercussive.h">
+      <Filter>Header Files\Spectrums\Onsets</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -101,9 +101,6 @@
     <ClCompile Include="IntelCheckStatus.cpp">
       <Filter>Source Files\Spectrums</Filter>
     </ClCompile>
-    <ClCompile Include="CqtDecibels.cpp">
-      <Filter>Source Files\Spectrums\Onsets</Filter>
-    </ClCompile>
     <ClCompile Include="ConstantQ.cpp">
       <Filter>Source Files\Spectrums\Core</Filter>
     </ClCompile>
@@ -115,6 +112,9 @@
     </ClCompile>
     <ClCompile Include="SparseMatrix.cpp">
       <Filter>Source Files\Spectrums\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="HarmonicPercussive.cpp">
+      <Filter>Source Files\Spectrums\Onsets</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

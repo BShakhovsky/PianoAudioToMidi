@@ -98,7 +98,7 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 	}
 
 	assert(cqtResp_.size() == nBins and "Wrong CQT-spectrum size");
-	Trim();
+	TrimErrors();
 	Scale(rateInitial, fMin, toScale);
 
 	// Eventually, we can flatten the array, and get rid of temporary 2D-buffer:
@@ -116,6 +116,7 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 }
 
 ConstantQ::~ConstantQ() {}
+
 
 void ConstantQ::EarlyDownsample(const bool isKaiserFast,
 	const int nOctaves, const double nyquist, const double cutOff)
@@ -188,7 +189,7 @@ void ConstantQ::Response(const size_t nBins)
 	assert(cqtResp_.size() < nBins and "Wrong CQT-spectrum size");
 }
 
-void ConstantQ::Trim()
+void ConstantQ::TrimErrors()
 {
 	// FFmpeg strangely loses small number of frames after each down-sample
 	// And STFT right-end may get truncated several times,
@@ -203,9 +204,10 @@ void ConstantQ::Trim()
 
 void ConstantQ::Scale(const int rateInit, const float fMin, const bool toScale)
 {
+	// Will need its size (= num bins) in TrimSilence:
+	qBasis_->CalcLengths(rateInit, fMin, cqtResp_.size());
 	if (not toScale) return;
 
-	qBasis_->CalcLengths(rateInit, fMin, cqtResp_.size());
 	assert(cqt_.size() % qBasis_->GetLengths().size() == 0 and
 		"Wrong number of either CQT-lengths or in CQT themselves");
 	CHECK_IPP_RESULT(ippsSqrt_32f_I(qBasis_->GetLengths().data(),
@@ -213,4 +215,55 @@ void ConstantQ::Scale(const int rateInit, const float fMin, const bool toScale)
 
 	for (size_t i(0); i < cqtResp_.size(); ++i) CHECK_IPP_RESULT(ippsDivC_32f_I(
 		qBasis_->GetLengths().at(i), cqtResp_.at(i).data(), static_cast<int>(cqtResp_.at(i).size())));
+}
+
+
+void ConstantQ::Amplitude2power() { CHECK_IPP_RESULT(
+	ippsSqr_32f_I(cqt_.data(), static_cast<int>(cqt_.size()))); }
+
+void ConstantQ::TrimSilence(const float aMin, const float topDb)
+{
+	vector<Ipp32f> mse(cqt_.size() / qBasis_->GetLengths().size()); // Mean-square energy:
+	for (size_t i(0); i < mse.size(); ++i) CHECK_IPP_RESULT(ippsMean_32f(
+		cqt_.data() + static_cast<ptrdiff_t>(i * qBasis_->GetLengths().size()),
+		static_cast<int>(qBasis_->GetLengths().size()), &mse.at(i), ippAlgHintFast));
+
+	Ipp32f mseMax;
+	CHECK_IPP_RESULT(ippsMax_32f(mse.data(), static_cast<int>(mse.size()), &mseMax));
+	Power2db_helper(mse.data(), static_cast<int>(mse.size()), mseMax, aMin, 0);
+
+	const auto iterStart(find_if(mse.cbegin(), mse.cend(),
+		[topDb](Ipp32f mse_i) { return mse_i > -topDb; }));
+	const auto iterEnd(find_if(mse.crbegin(), mse.crend(),
+		[topDb](Ipp32f mse_i) { return mse_i > -topDb; }));
+
+	const auto unusedIter(cqt_.erase(cqt_.cbegin(), cqt_.cbegin() + (iterStart - mse.cbegin())
+		* static_cast<ptrdiff_t>(qBasis_->GetLengths().size())));
+	cqt_.resize(cqt_.size() - (iterEnd - mse.crbegin())
+		* static_cast<ptrdiff_t>(qBasis_->GetLengths().size()));
+	assert(cqt_.size() % qBasis_->GetLengths().size() == 0 and
+		"CQT is not rectangular after silence trimming");
+}
+
+void ConstantQ::Power2db_helper(float* spectr, const int size, const float ref, const float aMin, const float topDb)
+{
+	assert(*min_element(spectr, spectr + size) >= 0 and
+		"Did you forget to square CQT-amplitudes to convert them to power?");
+	assert(ref >= 0 and aMin > 0 and "Reference and minimum powers must be strictly positive");
+
+	// Scale power relative to 'ref' in a numerically stable way:
+	// S_db = 10 * log10(S / ref) ~= 10 * log10(S) - 10 * log10(ref)
+	// Zeros in the output correspond to positions where S == ref
+	CHECK_IPP_RESULT(ippiThreshold_32f_C1IR(spectr, size, { size, 1 }, aMin, ippCmpLess));
+	CHECK_IPP_RESULT(ippsLog10_32f_A11(spectr, spectr, size));
+	CHECK_IPP_RESULT(ippsMulC_32f_I(10, spectr, size));
+	CHECK_IPP_RESULT(ippsSubC_32f_I(10 * log10(max(aMin, ref)), spectr, size));
+
+	assert(topDb >= 0 and "top_db must be non-negative");
+	if (topDb) // Threshold the output at topDb below the peak:
+	{
+		Ipp32f maxDb;
+		CHECK_IPP_RESULT(ippsMax_32f(spectr, size, &maxDb));
+		CHECK_IPP_RESULT(ippiThreshold_32f_C1IR(spectr, size, { size, 1 }, maxDb - topDb, ippCmpLess));
+	}
 }

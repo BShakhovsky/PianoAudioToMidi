@@ -4,7 +4,8 @@
 #include "SparseMatrix.h"
 #include "IntelCheckStatus.h"
 
-SparseMatrix::SparseMatrix(MKL_Complex8* dense, const int nRows, const int nCols, const size_t nNonZeros)
+SparseMatrix::SparseMatrix(MKL_Complex8* dense,
+	const int nRows, const int nCols, const size_t nNonZeros)
 	: nCols_(nCols), Aval_(nNonZeros), Acol_(nNonZeros),
 	Arow_(nRows + 1ull), // +1 is because 3-array variation
 	csr_(nullptr)
