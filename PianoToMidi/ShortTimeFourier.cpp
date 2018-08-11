@@ -7,8 +7,9 @@ using namespace juce::dsp;
 
 ShortTimeFourier::ShortTimeFourier(const size_t frameLen,
 	const STFT_WINDOW window, const bool isPadReflected) noexcept
-	: frameLen_(frameLen), isPadReflect_(isPadReflected), fft_(make_unique<FFT>(int(log2(frameLen)))),
-	nFrames_(0ull), nFreqs_(0ull)
+	: frameLen_(frameLen), isPadReflect_(isPadReflected),
+	fft_(make_unique<FFT>(int(log2(frameLen)))),
+	nFrames_(0ull), nFreqs_(frameLen / 2 + 1)
 {
 	assert(static_cast<size_t>(fft_->getSize()) == frameLen && "Frame length must be power of 2");
 	GetStftWindow(window);
@@ -17,7 +18,7 @@ ShortTimeFourier::ShortTimeFourier(const size_t frameLen,
 
 ShortTimeFourier::~ShortTimeFourier() {}
 
-void ShortTimeFourier::RealForward(const vector<float>& rawAudio, int hopLen)
+void ShortTimeFourier::RealForward(const float* rawAudio, const size_t nSamples, int hopLen)
 {
 #ifdef _DEBUG
 	using boost::alignment::is_aligned;
@@ -27,17 +28,15 @@ void ShortTimeFourier::RealForward(const vector<float>& rawAudio, int hopLen)
 
 	AlignedVector<float> paddedBuff;
 	// Pad (frame length / 2) both sides, so that frames are centered:
-	PadCentered(rawAudio, &paddedBuff, isPadReflect_);
+	PadCentered(rawAudio, nSamples, &paddedBuff, isPadReflect_);
 	assert(paddedBuff.size() >= frameLen_ &&
 		"PadCentered function must return at least frame length number of samples");
 	assert(is_aligned(paddedBuff.data(), 64) and "Padded audio buffer is not aligned");
 
 	// Vertical stride = 1 sample, horizontal stride = hop length, the end may get truncated:
 	nFrames_ = (paddedBuff.size() - frameLen_) / hopLen + 1;
-	nFreqs_ = frameLen_ / 2 + 1;
 	stft_.resize(nFrames_ * nFreqs_); // FFT will write here half + 1 complex numbers
 	// now it is columns, but will be rows after transpose
-
 	for (ptrdiff_t i(0); i < static_cast<ptrdiff_t>(nFrames_); ++i)
 	{
 		// Temporarily window the time series into buffer with different type (complex instead of float)
@@ -52,16 +51,19 @@ void ShortTimeFourier::RealForward(const vector<float>& rawAudio, int hopLen)
 		fft_->performRealOnlyForwardTransform(reinterpret_cast<float*>(
 			stft_.data() + i * nFreqs_), true);
 	}
+
+	MKL_Cimatcopy('R', 'T', nFrames_, nFreqs_, { 1, 0 }, reinterpret_cast<MKL_Complex8*>(
+		stft_.data()), max(1ull, nFreqs_), max(1ull, nFrames_));
 }
 
-void ShortTimeFourier::PadCentered(const vector<float>& src,
+void ShortTimeFourier::PadCentered(const float* src, const size_t srcSize,
 	AlignedVector<float>* dest, const bool isModeReflect) const
 {
-	dest->assign(src.size() + frameLen_, 0);
-	if (src.empty()) return;
+	dest->assign(srcSize + frameLen_, 0);
+	if (srcSize == 0) return;
 
 	const auto fLen(static_cast<ptrdiff_t>(frameLen_));
-	auto unusedIter(copy(src.cbegin(), src.cend(), dest->begin() + fLen / 2));
+	auto unusedIter(copy(src, src + static_cast<ptrdiff_t>(srcSize), dest->begin() + fLen / 2));
 	if (not isModeReflect) return; // Leave zeros as with constant pad mode
 
 	auto iter(dest->begin() + fLen / 2);

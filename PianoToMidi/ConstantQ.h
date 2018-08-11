@@ -9,18 +9,22 @@ public:
 	// Equivalent noise bandwidth (int FFT bins) of a window function:
 	static constexpr double WIN_BAND_WIDTH[] = { 1., 1.50018310546875, 1.3629455320350348 };
 
-	explicit ConstantQ(const std::shared_ptr<class AudioLoader>& audio, int hopLength = 512,
-		float fMin = 27.5f, size_t nBins = 88, int binsPerOctave = 12,
+	explicit ConstantQ(const std::shared_ptr<class AudioLoader>& audio,
+		size_t nBins = 88, int binsPerOctave = 12, float fMin = 27.5f, int hopLength = 512,
 		float filterScale = 1, NORM_TYPE norm = NORM_TYPE::L1, float sparsity = .01f,
 		CQT_WINDOW windowFunc = CQT_WINDOW::HANN, bool toScale = true, bool isPadReflect = true);
 	~ConstantQ();
+
+	const std::vector<std::vector<std::complex<float>>>& GetCQT() const { return cqtResp_; }
 private:
-	void EarlyDownsample(bool isKaiserFast, int nOctaves, double nyquist, double filterCutoff, bool toScale);
-	void Response(bool isPadReflect) const;
-	void TrimStack(size_t nBins);
-	void Scale(int sampleRateInitial, float fMin, size_t nBins, bool toScale) const;
+	void EarlyDownsample(bool isKaiserFast, int nOctaves, double nyquist, double filterCutoff);
+	void HalfDownSample(int nOctaves);
+	void Response(size_t nBins);
+	void Trim();
+	void Scale(int sampleRateInitial, float fMin, size_t nBins, bool toScale);
 
 	const std::unique_ptr<class CqtBasis> qBasis_;
+	std::unique_ptr<class ShortTimeFourier> stft_;
 
 	std::shared_ptr<AudioLoader> audio_;
 	int hopLen_;

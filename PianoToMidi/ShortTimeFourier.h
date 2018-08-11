@@ -9,12 +9,11 @@ public:
 		STFT_WINDOW window = STFT_WINDOW::HANN, bool isPadReflected = true) noexcept;
 	~ShortTimeFourier();
 
-	void RealForward(const std::vector<float>& rawAudio, int hopLen = 0);
+	void RealForward(const float* rawAudio, size_t nSamples, int hopLen = 0);
 	const AlignedVector<std::complex<float>>& GetSTFT() const { return stft_; }
 	size_t GetNumFrames() const { return nFrames_; }
-	size_t GetNumFrequencies() const { return nFreqs_; }
 private:
-	void PadCentered(const std::vector<float>& source,
+	void PadCentered(const float* source, size_t srcSize,
 		AlignedVector<float>* dest, bool isModeReflect) const;
 	void GetStftWindow(STFT_WINDOW window);
 

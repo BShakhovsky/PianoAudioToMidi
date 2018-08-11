@@ -14,15 +14,13 @@ public:
 
 	void ScaleFilters(float scale);
 	void RowMajorMultiply(const MKL_Complex8* source, MKL_Complex8* dest, int nDestColumns) const;
-
+#pragma warning(push)
+#pragma warning(disable:4514) // Unreferenced inline function has been removed
 	float GetQfactor() const { return Q_; }
 	const std::vector<float>& GetFrequencies() const { return freqs_; }
 	std::vector<float>& GetLengths() { return lens_; } // not const, for inplace sqrt from outside
 	size_t GetFftFrameLen() const { return nFft_; }
-
-	// TODO: delete
-	const std::vector<std::vector<std::complex<float>>>& GetCqtFilters() const { return filts_; }
-	const AlignedVector<std::complex<float>>& GetFlatFilters() const { return filtsFlat_; }
+#pragma warning(pop)
 private:
 	void SparsifyRows(float quantile);
 

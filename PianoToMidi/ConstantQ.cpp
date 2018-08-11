@@ -1,8 +1,9 @@
 #include "stdafx.h"
+
+#include "AlignedVector.h"
 #include "ConstantQ.h"
 #include "AudioLoader.h"
 
-#include "AlignedVector.h"
 #include "CqtBasis.h"
 #include "ShortTimeFourier.h"
 #include "CqtError.h"
@@ -20,10 +21,10 @@ int Num2factors(int x)
 	return result;
 }
 
-ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const int hopLen,
-	const float fMin, const size_t nBins, const int octave, const float filtScale, const NORM_TYPE norm,
+ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nBins,
+	const int octave, const float fMin, const int hopLen, const float filtScale, const NORM_TYPE norm,
 	const float sparsity, const CQT_WINDOW window, const bool toScale, const bool isPadReflect)
-	: qBasis_(make_unique<CqtBasis>(octave, filtScale, norm, window)),
+	: qBasis_(make_unique<CqtBasis>(octave, filtScale, norm, window)), stft_(nullptr),
 	audio_(audio), hopLen_(hopLen)
 {
 	/* The recursive sub-sampling method described by
@@ -46,15 +47,23 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const int hopLe
 	auto filterCutoff(fMaxOctave * (1 + .5 *WIN_BAND_WIDTH[
 		static_cast<int>(window)] / qBasis_->GetQfactor())); // Required resampling quality:
 	const bool isKaiserFast(filterCutoff < BW_FASTEST * audio_->GetSampleRate() / 2);
-	EarlyDownsample(isKaiserFast, nOctaves, audio_->GetSampleRate() / 2., filterCutoff, toScale);
+	EarlyDownsample(isKaiserFast, nOctaves, audio_->GetSampleRate() / 2., filterCutoff);
 
-	cqtResp_.reserve(static_cast<size_t>(nOctaves));
+	cqtResp_.reserve(nOctaves * qBasis_->GetFrequencies().size());
 	const auto nFilters(min(static_cast<size_t>(octave), nBins));
+#ifdef _DEBUG
+	size_t nFft(0);
+#endif
 	if (not isKaiserFast)
 	{
 		// Do the top octave before resampling to allow for fast resampling
 		qBasis_->CalcFilters(audio_->GetSampleRate(), fMinOctave, nFilters, sparsity);
-		Response(isPadReflect);
+#ifdef _DEBUG
+		nFft = qBasis_->GetFftFrameLen();
+#endif
+		stft_ = make_unique<ShortTimeFourier>(qBasis_->GetFftFrameLen(),
+			ShortTimeFourier::STFT_WINDOW::RECT, isPadReflect);
+		Response(nBins);
 
 		fMinOctave /= 2;
 		fMaxOctave /= 2;
@@ -73,36 +82,30 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const int hopLe
 	}
 
 	qBasis_->CalcFilters(audio_->GetSampleRate(), fMinOctave, nFilters, sparsity);
+#ifdef _DEBUG
+	assert(nFft == 0 or nFft == qBasis_->GetFftFrameLen() and
+		"STFT frame length has changed, but it should not");
+#endif
+	if (not stft_) stft_ = make_unique<ShortTimeFourier>(qBasis_->GetFftFrameLen(),
+		ShortTimeFourier::STFT_WINDOW::RECT, isPadReflect);
 
 	const auto rateInitial(audio_->GetSampleRate());
 
 	for (int i(0); i < nOctaves; ++i)
 	{
-		if (i)
-		{
-			if (audio_->GetNumSamples() < 2)
-			{
-				ostringstream os;
-				os << "Input audio signal length = " << audio_->GetNumSamples()
-					<< " is too short for " << nOctaves << "-octave constant-q spectrum";
-				throw CqtError(os.str().c_str());
-			}
-			audio_->MonoResample(audio_->GetSampleRate() / 2); // except first time
-			qBasis_->ScaleFilters(sqrtf(2)); // to compensate for downsampling
-			hopLen_ /= 2;
-		}
-
-		Response(isPadReflect);
+		if (i) HalfDownSample(nOctaves); // except first time
+		Response(nBins);
 	}
 
-	TrimStack(nBins);
+	assert(cqtResp_.size() == nBins and "Wrong CQT-spectrum size");
+	Trim();
 	Scale(rateInitial, fMin, nBins, toScale);
 }
 
 ConstantQ::~ConstantQ() {}
 
-void ConstantQ::EarlyDownsample(const bool isKaiserFast, const int nOctaves,
-	const double nyquist, const double cutOff, const bool toScale)
+void ConstantQ::EarlyDownsample(const bool isKaiserFast,
+	const int nOctaves, const double nyquist, const double cutOff)
 {
 	if (not isKaiserFast) return;
 	const auto nDownSampleOps = min(max(0, static_cast<int>(ceil(log2(
@@ -120,55 +123,78 @@ void ConstantQ::EarlyDownsample(const bool isKaiserFast, const int nOctaves,
 	}
 	
 	audio_->MonoResample(audio_->GetSampleRate() / downSampleFactor);
-
-	// If not going to length-scale after CQT, need to compensate for the downsampling factor here:
-	if (not toScale) CHECK_IPP_RESULT(ippsMulC_32f_I(sqrt(static_cast<Ipp32f>(downSampleFactor)),
-		reinterpret_cast<Ipp32f*>(audio_->GetRawData()), static_cast<int>(audio_->GetNumSamples())));
 }
 
-void ConstantQ::Response(const bool isPadReflect) const
+void ConstantQ::HalfDownSample(const int nOctaves)
 {
-//	const ShortTimeFourier D(reinterpret_cast<float*>(audio_->GetRawData()), audio_->GetNumSamples(),
-//		qBasis_->GetFftFrameLen(), hopLen_, ShortTimeFourier::STFT_WINDOW::RECT, isPadReflect);
+	if (audio_->GetNumSamples() < 2)
+	{
+		ostringstream os;
+		os << "Input audio signal length = " << audio_->GetNumSamples()
+			<< " is too short for " << nOctaves << "-octave constant-q spectrum";
+		throw CqtError(os.str().c_str());
+	}
 
-	UNREFERENCED_PARAMETER(isPadReflect);
+	audio_->MonoResample(audio_->GetSampleRate() / 2);
 
-	// Filter response energy:
-//	qBasis_->RowMajorMultiply(D.data(), dest, D->nDestColumns(nFrames));
+	// Scale the resampled signal, so that it has approximately equal total energy:
+	CHECK_IPP_RESULT(ippsMulC_32f_I(sqrtf(2), reinterpret_cast<Ipp32f*>(audio_->GetRawData()),
+		static_cast<int>(audio_->GetNumSamples())));
 
-	// Append to the stack
-//	cqtResp_.push_back(dest);
+	qBasis_->ScaleFilters(sqrtf(2)); // to compensate for downsampling
+	hopLen_ /= 2;
 }
 
-void ConstantQ::TrimStack(const size_t nBins)
+void ConstantQ::Response(const size_t nBins)
 {
-	// Cleanup any framing errors at the boundaries:
-//	const auto maxCol = min(x.shape[1] for x in cqt_resp);
-//	print(max_col, max(x.shape[1] for x in cqt_resp));
+	assert(cqtResp_.size() < nBins and "Wrong CQT-spectrum size");
 
-//	cqt_resp = vstack([x[:, : max_col] for x in cqt_resp][:: - 1]);
-//	print(cqt_resp.shape);
-
-	// Clip out bottom frequencies we do not want:
-//	cqt_ = cqtResp[-n_bins:]
-//	print(C.shape);
-
-	UNREFERENCED_PARAMETER(nBins);
+	stft_->RealForward(reinterpret_cast<float*>(
+		audio_->GetRawData()), audio_->GetNumSamples(), hopLen_);
 	
-	cqtResp_.clear();
+	// Filter response energy:
+	AlignedVector<MKL_Complex8> resp(qBasis_->GetLengths().size() * stft_->GetNumFrames());
+	qBasis_->RowMajorMultiply(reinterpret_cast<const MKL_Complex8*>(
+		stft_->GetSTFT().data()), resp.data(), static_cast<int>(stft_->GetNumFrames()));
+
+	// Unfortunately, cannot fill flattened array straight away,
+	// because we will know the final truncated number of frames
+	// only after all down-samples are finished, so, now append to the 2D-stack:
+	for (auto i(static_cast<ptrdiff_t>(qBasis_->GetLengths().size()) - 1); i > -1; --i)
+	{
+		cqtResp_.push_back(vector<complex<float>>(stft_->GetNumFrames()));
+		CopyMemory(cqtResp_.back().data(), resp.data() + static_cast<ptrdiff_t>(
+			i * cqtResp_.back().size()), cqtResp_.back().size() * sizeof resp.front());
+		if (cqtResp_.size() == nBins) return; // Clip out bottom frequencies we do not want
+	}
+
+	assert(cqtResp_.size() < nBins and "Wrong CQT-spectrum size");
 }
 
-void ConstantQ::Scale(const int rateInit, const float fMin, const size_t nBins, const bool toScale) const
+void ConstantQ::Trim()
 {
-//	assert(cqt_.size() == qBasis_->GetLengths().size() and "Wrong CQT-spectrum size");
+	// FFmpeg strangely loses small number of frames after each down-sample
+	// And STFT right-end may get truncated several times,
+	// so cleanup framing errors at the right-boundary:
+	const auto minCol(min_element(cqtResp_.cbegin(), cqtResp_.cend(),
+		[](const vector<complex<float>>& lhs, const vector<complex<float>>& rhs)
+	{ return lhs.size() < rhs.size(); })->size());
+	for (auto& resp : cqtResp_) resp.resize(minCol);
+
+	reverse(cqtResp_.begin(), cqtResp_.end());
+}
+
+void ConstantQ::Scale(const int rateInit, const float fMin, const size_t nBins, const bool toScale)
+{
 	if (not toScale) return;
 
 	qBasis_->CalcLengths(rateInit, fMin, nBins);
+	assert(qBasis_->GetLengths().size() == nBins and cqtResp_.size() == nBins and
+		"Wrong number of either CQT-lengths or in CQT themselves");
 	CHECK_IPP_RESULT(ippsSqrt_32f_I(qBasis_->GetLengths().data(),
 		static_cast<int>(qBasis_->GetLengths().size())));
 
-//	for (const auto& len : qBasis_->GetLengths()) cout << len << ' '; cout << endl;
-
-//	for (size_t i(0); i < cqt_.size(); ++i) CHECK_IPP_RESULT(ippsDivC_32f_I(
-//		qBasis_->GetLengths().at(i), cqt_.at(i).data(), static_cast<int>(cqt_.at(i).size())));
+	for (size_t i(0); i < cqtResp_.size(); ++i) CHECK_IPP_RESULT(ippsDivC_32fc_I(
+		{ qBasis_->GetLengths().at(i), 0 }, reinterpret_cast<Ipp32fc*>(cqtResp_.at(i).data()),
+		static_cast<int>(cqtResp_.at(i).size())));
 }
