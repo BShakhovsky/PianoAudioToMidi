@@ -15,7 +15,8 @@ public:
 		CQT_WINDOW windowFunc = CQT_WINDOW::HANN, bool toScale = true, bool isPadReflect = true);
 	~ConstantQ();
 
-	const AlignedVector<float>& GetCQT() const { return cqt_; }
+	// not const for inplace converting to decibels from outside:
+	AlignedVector<float>& GetCQT() { return cqt_; }
 private:
 	void EarlyDownsample(bool isKaiserFast, int nOctaves, double nyquist, double filterCutoff);
 	void HalfDownSample(int nOctaves);

@@ -25,6 +25,18 @@
     <Filter Include="Source Files\Spectrums">
       <UniqueIdentifier>{54882ce4-97bd-4be7-bd41-8dc87153cabc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Spectrums\Core">
+      <UniqueIdentifier>{c1108670-4cb9-48f9-a07a-286a07eb9f94}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Spectrums\Onsets">
+      <UniqueIdentifier>{74b59810-174a-4355-8cb0-c217b0ec1f0f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Spectrums\Core">
+      <UniqueIdentifier>{d46fe965-9b07-4cec-8f8f-b2c807fc3fe0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Spectrums\Onsets">
+      <UniqueIdentifier>{dff838c4-fcee-43f3-aa6d-443c1046d007}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -48,26 +60,29 @@
     <ClInclude Include="MonoResampler.h">
       <Filter>Header Files\FFmpeg</Filter>
     </ClInclude>
-    <ClInclude Include="ShortTimeFourier.h">
-      <Filter>Header Files\Spectrums</Filter>
-    </ClInclude>
-    <ClInclude Include="CqtError.h">
-      <Filter>Header Files\Spectrums</Filter>
-    </ClInclude>
-    <ClInclude Include="CqtBasis.h">
-      <Filter>Header Files\Spectrums</Filter>
-    </ClInclude>
     <ClInclude Include="AlignedVector.h">
-      <Filter>Header Files\Spectrums</Filter>
-    </ClInclude>
-    <ClInclude Include="SparseMatrix.h">
-      <Filter>Header Files\Spectrums</Filter>
-    </ClInclude>
-    <ClInclude Include="ConstantQ.h">
       <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
     <ClInclude Include="IntelCheckStatus.h">
       <Filter>Header Files\Spectrums</Filter>
+    </ClInclude>
+    <ClInclude Include="CqtDecibels.h">
+      <Filter>Header Files\Spectrums\Onsets</Filter>
+    </ClInclude>
+    <ClInclude Include="ConstantQ.h">
+      <Filter>Header Files\Spectrums\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="CqtBasis.h">
+      <Filter>Header Files\Spectrums\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="CqtError.h">
+      <Filter>Header Files\Spectrums\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="ShortTimeFourier.h">
+      <Filter>Header Files\Spectrums\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="SparseMatrix.h">
+      <Filter>Header Files\Spectrums\Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -83,20 +98,23 @@
     <ClCompile Include="FFmpegError.cpp">
       <Filter>Source Files\FFmpeg</Filter>
     </ClCompile>
-    <ClCompile Include="ShortTimeFourier.cpp">
-      <Filter>Source Files\Spectrums</Filter>
-    </ClCompile>
-    <ClCompile Include="CqtBasis.cpp">
-      <Filter>Source Files\Spectrums</Filter>
-    </ClCompile>
-    <ClCompile Include="SparseMatrix.cpp">
-      <Filter>Source Files\Spectrums</Filter>
-    </ClCompile>
-    <ClCompile Include="ConstantQ.cpp">
-      <Filter>Source Files\Spectrums</Filter>
-    </ClCompile>
     <ClCompile Include="IntelCheckStatus.cpp">
       <Filter>Source Files\Spectrums</Filter>
+    </ClCompile>
+    <ClCompile Include="CqtDecibels.cpp">
+      <Filter>Source Files\Spectrums\Onsets</Filter>
+    </ClCompile>
+    <ClCompile Include="ConstantQ.cpp">
+      <Filter>Source Files\Spectrums\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="CqtBasis.cpp">
+      <Filter>Source Files\Spectrums\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="ShortTimeFourier.cpp">
+      <Filter>Source Files\Spectrums\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="SparseMatrix.cpp">
+      <Filter>Source Files\Spectrums\Core</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

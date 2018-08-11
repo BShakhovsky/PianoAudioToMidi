@@ -10,8 +10,11 @@ public:
 	~ShortTimeFourier();
 
 	void RealForward(const float* rawAudio, size_t nSamples, int hopLen = 0);
+#pragma warning(push)
+#pragma warning(disable:4514) // Unreferenced inline function has been removed
 	const AlignedVector<std::complex<float>>& GetSTFT() const { return stft_; }
 	size_t GetNumFrames() const { return nFrames_; }
+#pragma warning(pop)
 private:
 	void PadCentered(const float* source, size_t srcSize,
 		AlignedVector<float>* dest, bool isModeReflect) const;

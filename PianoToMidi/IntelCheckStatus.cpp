@@ -12,12 +12,18 @@ void CheckIPPresult(const IppStatus status)
 	string errMsg;
 	switch (status)
 	{
-	case ippStsNoErr:																break;
-	case ippStsNullPtrErr:		errMsg = "Null pointer: ";							break;
-	case ippStsSizeErr:			errMsg = "Length <= 0 (or <= 3): ";					break;
-	case ippStsDivByZeroErr:	errMsg = "Division by value < min float number: ";	break;
-	case ippStsDataTypeErr:		errMsg = "Data type not supported: ";				break;
-	default:					errMsg = "Unknown error: ";
+	case ippStsNoErr:																	break;
+	case ippStsNullPtrErr:			errMsg = "Null pointer: ";							break;
+	case ippStsSizeErr:				errMsg = "Length <= 0 (or <= 3): ";					break;
+	case ippStsStepErr:				errMsg = "Step <= 0: ";								break;
+	case ippStsDivByZeroErr:		errMsg = "Division by value < min float number: ";	break;
+	case ippStsDataTypeErr:			errMsg = "Data type not supported: ";				break;
+	case ippStsNotSupportedModeErr:	errMsg = "Comparison mode not supported: ";			break;
+	case ippStsDomain:				errMsg = "Argument is out of the function domain "
+										"(at least one of the input elements <= 0: ";	break;
+	case ippStsSingularity:			errMsg = "Argument is the singularity point "
+										"(at least one of the input elements <= 0: ";	break;
+	default:						errMsg = "Unknown error: ";
 	}
 	if (not errMsg.empty()) throw CqtError((errMsg + ippGetStatusString(status)).c_str());
 }
