@@ -22,6 +22,9 @@ public:
 
 	const AlignedVector<float>& GetCQT() const { return cqt_; }
 	size_t GetNumBins() const { return nBins_; }
+
+	size_t GetFftFrameLength() const;
+	int GetHopLength() const { return hopLen_; }
 private:
 	void EarlyDownsample(bool isKaiserFast, int nOctaves, double nyquist, double filterCutoff);
 	void HalfDownSample(int nOctaves);
@@ -32,16 +35,13 @@ private:
 	static void Power2db_helper(float* powerSpectrum, int size, float ref, float aMin, float topDb);
 
 	const size_t nBins_;
+	const int hopLen_;
+	int hopLenReduced_;
+
 	const std::unique_ptr<class CqtBasis> qBasis_;
 	std::unique_ptr<class ShortTimeFourier> stft_;
-
 	std::shared_ptr<AudioLoader> audio_;
-	int hopLen_;
-#ifdef _WIN64
-	const byte pad_[4]{ 0 };
-#elif not defined _WIN32
-#	error It should be either 32- or 64-bit Windows
-#endif
+
 	std::vector<std::vector<float>> cqtResp_;
 	AlignedVector<float> cqt_;
 

@@ -25,6 +25,10 @@ void CheckIPPresult(const IppStatus status)
 										"(at least one of the input elements <= 0: ";		break;
 	case ippStsThreshNegLevelErr:	errMsg = "Negative complex threshold: ";				break;
 
+	case ippStsIIROrderErr:			errMsg = "IIR filter order <= 0: ";						break;
+	case ippStsChannelErr:			errMsg = "IIR filter number of channels <= 0: ";		break;
+	case ippStsContextMatchErr:		errMsg = "Incorrect IIR filter state identifier: ";		break;
+
 	case ippStsStepErr:				errMsg = "Step <= 0: ";									break;
 	case ippStsNotEvenStepErr:		errMsg = "One of the step values not divisible by 4 "
 													"for floating-point images, "

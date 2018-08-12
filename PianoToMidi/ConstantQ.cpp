@@ -24,8 +24,9 @@ int Num2factors(int x)
 ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nBins,
 	const int octave, const float fMin, const int hopLen, const float filtScale, const NORM_TYPE norm,
 	const float sparsity, const CQT_WINDOW window, const bool toScale, const bool isPadReflect)
-	: nBins_(nBins), qBasis_(make_unique<CqtBasis>(octave, filtScale, norm, window)),
-	stft_(nullptr), audio_(audio), hopLen_(hopLen)
+	: nBins_(nBins), hopLen_(hopLen), hopLenReduced_(hopLen),
+	qBasis_(make_unique<CqtBasis>(octave, filtScale, norm, window)),
+	stft_(nullptr), audio_(audio)
 {
 	/* The recursive sub-sampling method described by
 	Schoerkhuber, Christian, and Anssi Klapuri
@@ -117,17 +118,19 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 
 ConstantQ::~ConstantQ() {}
 
+size_t ConstantQ::GetFftFrameLength() const { return qBasis_->GetFftFrameLen(); }
+
 
 void ConstantQ::EarlyDownsample(const bool isKaiserFast,
 	const int nOctaves, const double nyquist, const double cutOff)
 {
 	if (not isKaiserFast) return;
 	const auto nDownSampleOps = min(max(0, static_cast<int>(ceil(log2(
-		BW_FASTEST * nyquist / cutOff)) - 1) - 1), max(0, Num2factors(hopLen_) - nOctaves + 1));
+		BW_FASTEST * nyquist / cutOff)) - 1) - 1), max(0, Num2factors(hopLenReduced_) - nOctaves + 1));
 	if (nDownSampleOps == 0) return;
 
 	const auto downSampleFactor(static_cast<int>(pow(2, nDownSampleOps)));
-	hopLen_ /= downSampleFactor;
+	hopLenReduced_ /= downSampleFactor;
 	if (audio_->GetNumSamples() < static_cast<size_t>(downSampleFactor))
 	{
 		ostringstream os;
@@ -156,7 +159,7 @@ void ConstantQ::HalfDownSample(const int nOctaves)
 		static_cast<int>(audio_->GetNumSamples())));
 
 	qBasis_->ScaleFilters(sqrtf(2)); // to compensate for downsampling
-	hopLen_ /= 2;
+	hopLenReduced_ /= 2;
 }
 
 void ConstantQ::Response()
@@ -164,7 +167,7 @@ void ConstantQ::Response()
 	assert(cqtResp_.size() < nBins_ and "Wrong CQT-spectrum size");
 
 	stft_->RealForward(reinterpret_cast<float*>(
-		audio_->GetRawData()), audio_->GetNumSamples(), hopLen_);
+		audio_->GetRawData()), audio_->GetNumSamples(), hopLenReduced_);
 	
 	// Filter response energy:
 	AlignedVector<MKL_Complex8> resp(qBasis_->GetLengths().size() * stft_->GetNumFrames());
