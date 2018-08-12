@@ -12,17 +12,28 @@ void CheckIPPresult(const IppStatus status)
 	string errMsg;
 	switch (status)
 	{
-	case ippStsNoErr:																	break;
-	case ippStsNullPtrErr:			errMsg = "Null pointer: ";							break;
-	case ippStsSizeErr:				errMsg = "Length <= 0 (or <= 3): ";					break;
-	case ippStsStepErr:				errMsg = "Step <= 0: ";								break;
-	case ippStsDivByZeroErr:		errMsg = "Division by value < min float number: ";	break;
-	case ippStsDataTypeErr:			errMsg = "Data type not supported: ";				break;
-	case ippStsNotSupportedModeErr:	errMsg = "Comparison mode not supported: ";			break;
+	case ippStsNoErr:																		break;
+	case ippStsNullPtrErr:			errMsg = "Null pointer: ";								break;
+	case ippStsSizeErr:				errMsg = "Length <= 0 (or <= 3, "
+													"or dst len < src len + border): ";		break;
+	case ippStsDivByZeroErr:		errMsg = "Division by value < min float number: ";		break;
+	case ippStsDataTypeErr:			errMsg = "Data type not supported: ";					break;
+	case ippStsNotSupportedModeErr:	errMsg = "Comparison mode not supported: ";				break;
 	case ippStsDomain:				errMsg = "Argument is out of the function domain "
-										"(at least one of the input elements <= 0: ";	break;
+										"(at least one of the input elements <= 0: ";		break;
 	case ippStsSingularity:			errMsg = "Argument is the singularity point "
-										"(at least one of the input elements <= 0: ";	break;
+										"(at least one of the input elements <= 0: ";		break;
+	case ippStsThreshNegLevelErr:	errMsg = "Negative complex threshold: ";				break;
+
+	case ippStsStepErr:				errMsg = "Step <= 0: ";									break;
+	case ippStsNotEvenStepErr:		errMsg = "One of the step values not divisible by 4 "
+													"for floating-point images, "
+													"or by 2 for short-integer images: ";	break;
+	case ippStsMaskSizeErr:			errMsg = "Mask size has field <= 0 or even field: ";	break;
+	case ippStsAnchorErr:			errMsg = "Anchor is outside the mask size: ";			break;
+	case ippStsBorderErr:			errMsg = "Illegal border type: ";						break;
+	case ippStsNumChannelsErr:		errMsg = "Illegal number of channels: ";				break;
+
 	default:						errMsg = "Unknown error: ";
 	}
 	if (not errMsg.empty()) throw CqtError((errMsg + ippGetStatusString(status)).c_str());

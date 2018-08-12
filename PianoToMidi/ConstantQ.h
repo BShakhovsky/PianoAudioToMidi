@@ -21,15 +21,17 @@ public:
 		Power2db_helper(cqt_.data(), static_cast<int>(cqt_.size()), ref, aMin, topDb); }
 
 	const AlignedVector<float>& GetCQT() const { return cqt_; }
+	size_t GetNumBins() const { return nBins_; }
 private:
 	void EarlyDownsample(bool isKaiserFast, int nOctaves, double nyquist, double filterCutoff);
 	void HalfDownSample(int nOctaves);
-	void Response(size_t nBins);
+	void Response();
 	void TrimErrors();
 	void Scale(int sampleRateInitial, float fMin, bool toScale);
 
 	static void Power2db_helper(float* powerSpectrum, int size, float ref, float aMin, float topDb);
 
+	const size_t nBins_;
 	const std::unique_ptr<class CqtBasis> qBasis_;
 	std::unique_ptr<class ShortTimeFourier> stft_;
 

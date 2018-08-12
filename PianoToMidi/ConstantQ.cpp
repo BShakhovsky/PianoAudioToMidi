@@ -24,8 +24,8 @@ int Num2factors(int x)
 ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nBins,
 	const int octave, const float fMin, const int hopLen, const float filtScale, const NORM_TYPE norm,
 	const float sparsity, const CQT_WINDOW window, const bool toScale, const bool isPadReflect)
-	: qBasis_(make_unique<CqtBasis>(octave, filtScale, norm, window)), stft_(nullptr),
-	audio_(audio), hopLen_(hopLen)
+	: nBins_(nBins), qBasis_(make_unique<CqtBasis>(octave, filtScale, norm, window)),
+	stft_(nullptr), audio_(audio), hopLen_(hopLen)
 {
 	/* The recursive sub-sampling method described by
 	Schoerkhuber, Christian, and Anssi Klapuri
@@ -63,7 +63,7 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 #endif
 		stft_ = make_unique<ShortTimeFourier>(qBasis_->GetFftFrameLen(),
 			ShortTimeFourier::STFT_WINDOW::RECT, isPadReflect);
-		Response(nBins);
+		Response();
 
 		fMinOctave /= 2;
 		fMaxOctave /= 2;
@@ -94,7 +94,7 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 	for (int i(0); i < nOctaves; ++i)
 	{
 		if (i) HalfDownSample(nOctaves); // except first time
-		Response(nBins);
+		Response();
 	}
 
 	assert(cqtResp_.size() == nBins and "Wrong CQT-spectrum size");
@@ -159,9 +159,9 @@ void ConstantQ::HalfDownSample(const int nOctaves)
 	hopLen_ /= 2;
 }
 
-void ConstantQ::Response(const size_t nBins)
+void ConstantQ::Response()
 {
-	assert(cqtResp_.size() < nBins and "Wrong CQT-spectrum size");
+	assert(cqtResp_.size() < nBins_ and "Wrong CQT-spectrum size");
 
 	stft_->RealForward(reinterpret_cast<float*>(
 		audio_->GetRawData()), audio_->GetNumSamples(), hopLen_);
@@ -181,12 +181,10 @@ void ConstantQ::Response(const size_t nBins)
 			+ static_cast<ptrdiff_t>(i * cqtResp_.back().size())),
 			cqtResp_.back().data(), static_cast<int>(cqtResp_.back().size())));
 
-//		CopyMemory(cqtResp_.back().data(), resp.data() + static_cast<ptrdiff_t>(
-//			i * cqtResp_.back().size()), cqtResp_.back().size() * sizeof resp.front());
-		if (cqtResp_.size() == nBins) return; // Clip out bottom frequencies we do not want
+		if (cqtResp_.size() == nBins_) return; // Clip out bottom frequencies we do not want
 	}
 
-	assert(cqtResp_.size() < nBins and "Wrong CQT-spectrum size");
+	assert(cqtResp_.size() < nBins_ and "Wrong CQT-spectrum size");
 }
 
 void ConstantQ::TrimErrors()
@@ -204,14 +202,11 @@ void ConstantQ::TrimErrors()
 
 void ConstantQ::Scale(const int rateInit, const float fMin, const bool toScale)
 {
-	// Will need its size (= num bins) in TrimSilence:
-	qBasis_->CalcLengths(rateInit, fMin, cqtResp_.size());
 	if (not toScale) return;
 
-	assert(cqt_.size() % qBasis_->GetLengths().size() == 0 and
-		"Wrong number of either CQT-lengths or in CQT themselves");
-	CHECK_IPP_RESULT(ippsSqrt_32f_I(qBasis_->GetLengths().data(),
-		static_cast<int>(qBasis_->GetLengths().size())));
+	qBasis_->CalcLengths(rateInit, fMin, cqtResp_.size());
+	assert(qBasis_->GetLengths().size() == nBins_ and "Wrong number of CQT-lengths");
+	CHECK_IPP_RESULT(ippsSqrt_32f_I(qBasis_->GetLengths().data(), static_cast<int>(nBins_)));
 
 	for (size_t i(0); i < cqtResp_.size(); ++i) CHECK_IPP_RESULT(ippsDivC_32f_I(
 		qBasis_->GetLengths().at(i), cqtResp_.at(i).data(), static_cast<int>(cqtResp_.at(i).size())));
@@ -223,10 +218,9 @@ void ConstantQ::Amplitude2power() { CHECK_IPP_RESULT(
 
 void ConstantQ::TrimSilence(const float aMin, const float topDb)
 {
-	vector<Ipp32f> mse(cqt_.size() / qBasis_->GetLengths().size()); // Mean-square energy:
-	for (size_t i(0); i < mse.size(); ++i) CHECK_IPP_RESULT(ippsMean_32f(
-		cqt_.data() + static_cast<ptrdiff_t>(i * qBasis_->GetLengths().size()),
-		static_cast<int>(qBasis_->GetLengths().size()), &mse.at(i), ippAlgHintFast));
+	vector<Ipp32f> mse(cqt_.size() / nBins_); // Mean-square energy:
+	for (size_t i(0); i < mse.size(); ++i) CHECK_IPP_RESULT(ippsMean_32f(cqt_.data()
+		+ static_cast<ptrdiff_t>(i * nBins_), static_cast<int>(nBins_), &mse.at(i), ippAlgHintFast));
 
 	Ipp32f mseMax;
 	CHECK_IPP_RESULT(ippsMax_32f(mse.data(), static_cast<int>(mse.size()), &mseMax));
@@ -237,15 +231,14 @@ void ConstantQ::TrimSilence(const float aMin, const float topDb)
 	const auto iterEnd(find_if(mse.crbegin(), mse.crend(),
 		[topDb](Ipp32f mse_i) { return mse_i > -topDb; }));
 
-	const auto unusedIter(cqt_.erase(cqt_.cbegin(), cqt_.cbegin() + (iterStart - mse.cbegin())
-		* static_cast<ptrdiff_t>(qBasis_->GetLengths().size())));
-	cqt_.resize(cqt_.size() - (iterEnd - mse.crbegin())
-		* static_cast<ptrdiff_t>(qBasis_->GetLengths().size()));
-	assert(cqt_.size() % qBasis_->GetLengths().size() == 0 and
-		"CQT is not rectangular after silence trimming");
+	const auto unusedIter(cqt_.erase(cqt_.cbegin(),
+		cqt_.cbegin() + (iterStart - mse.cbegin()) * static_cast<ptrdiff_t>(nBins_)));
+	cqt_.resize(cqt_.size() - (iterEnd - mse.crbegin()) * static_cast<ptrdiff_t>(nBins_));
+	assert(cqt_.size() % nBins_ == 0 and "CQT is not rectangular after silence trimming");
 }
 
-void ConstantQ::Power2db_helper(float* spectr, const int size, const float ref, const float aMin, const float topDb)
+void ConstantQ::Power2db_helper(float* spectr, const int size,
+	const float ref, const float aMin, const float topDb)
 {
 	assert(*min_element(spectr, spectr + size) >= 0 and
 		"Did you forget to square CQT-amplitudes to convert them to power?");
@@ -254,7 +247,7 @@ void ConstantQ::Power2db_helper(float* spectr, const int size, const float ref, 
 	// Scale power relative to 'ref' in a numerically stable way:
 	// S_db = 10 * log10(S / ref) ~= 10 * log10(S) - 10 * log10(ref)
 	// Zeros in the output correspond to positions where S == ref
-	CHECK_IPP_RESULT(ippiThreshold_32f_C1IR(spectr, size, { size, 1 }, aMin, ippCmpLess));
+	CHECK_IPP_RESULT(ippsThreshold_LT_32f_I(spectr, size, aMin));
 	CHECK_IPP_RESULT(ippsLog10_32f_A11(spectr, spectr, size));
 	CHECK_IPP_RESULT(ippsMulC_32f_I(10, spectr, size));
 	CHECK_IPP_RESULT(ippsSubC_32f_I(10 * log10(max(aMin, ref)), spectr, size));
@@ -264,6 +257,6 @@ void ConstantQ::Power2db_helper(float* spectr, const int size, const float ref, 
 	{
 		Ipp32f maxDb;
 		CHECK_IPP_RESULT(ippsMax_32f(spectr, size, &maxDb));
-		CHECK_IPP_RESULT(ippiThreshold_32f_C1IR(spectr, size, { size, 1 }, maxDb - topDb, ippCmpLess));
+		CHECK_IPP_RESULT(ippsThreshold_LT_32f_I(spectr, size, maxDb - topDb));
 	}
 }
