@@ -14,7 +14,7 @@ void CheckIPPresult(const IppStatus status)
 	{
 	case ippStsNoErr:																		break;
 	case ippStsNullPtrErr:			errMsg = "Null pointer: ";								break;
-	case ippStsSizeErr:				errMsg = "Length <= 0 (or <= 3, "
+	case ippStsSizeErr:				errMsg = "Length <= 0 (or <= 1, or <= 3, "
 													"or dst len < src len + border): ";		break;
 	case ippStsDivByZeroErr:		errMsg = "Division by value < min float number: ";		break;
 	case ippStsDataTypeErr:			errMsg = "Data type not supported: ";					break;

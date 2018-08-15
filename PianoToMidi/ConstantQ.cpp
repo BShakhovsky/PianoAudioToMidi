@@ -25,6 +25,7 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 	const int octave, const float fMin, const int hopLen, const float filtScale, const NORM_TYPE norm,
 	const float sparsity, const CQT_WINDOW window, const bool toScale, const bool isPadReflect)
 	: nBins_(nBins), hopLen_(hopLen), hopLenReduced_(hopLen),
+	rateInitial_(audio->GetSampleRate()),
 	qBasis_(make_unique<CqtBasis>(octave, filtScale, norm, window)),
 	stft_(nullptr), audio_(audio)
 {
@@ -36,7 +37,7 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 	assert(audio_->GetBytesPerSample() == sizeof(float) and
 		"Raw audio data is assumed to be in float-format before calculating CQT-spectrogram");
 
-	qBasis_->CalcFrequencies(audio_->GetSampleRate(), fMin, nBins);
+	qBasis_->CalcFrequencies(rateInitial_, fMin, nBins);
 	auto fMinOctave(*(qBasis_->GetFrequencies().cend() - octave)), // First, frequencies of the top octave
 		fMaxOctave(qBasis_->GetFrequencies().back());
 	assert(fMinOctave == *min_element(qBasis_->GetFrequencies().cend() - octave,
@@ -47,8 +48,8 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 	auto nOctaves(static_cast<int>(ceil(static_cast<float>(nBins) / octave)));
 	auto filterCutoff(fMaxOctave * (1 + .5 *WIN_BAND_WIDTH[
 		static_cast<int>(window)] / qBasis_->GetQfactor())); // Required resampling quality:
-	const bool isKaiserFast(filterCutoff < BW_FASTEST * audio_->GetSampleRate() / 2);
-	EarlyDownsample(isKaiserFast, nOctaves, audio_->GetSampleRate() / 2., filterCutoff);
+	const bool isKaiserFast(filterCutoff < BW_FASTEST * rateInitial_ / 2);
+	EarlyDownsample(isKaiserFast, nOctaves, rateInitial_ / 2., filterCutoff);
 
 	cqtResp_.reserve(nOctaves * qBasis_->GetFrequencies().size());
 	const auto nFilters(min(static_cast<size_t>(octave), nBins));
@@ -58,7 +59,7 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 	if (not isKaiserFast)
 	{
 		// Do the top octave before resampling to allow for fast resampling
-		qBasis_->CalcFilters(audio_->GetSampleRate(), fMinOctave, nFilters, sparsity);
+		qBasis_->CalcFilters(rateInitial_, fMinOctave, nFilters, sparsity);
 #ifdef _DEBUG
 		nFft = qBasis_->GetFftFrameLen();
 #endif
@@ -82,15 +83,13 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 		throw CqtError(os.str().c_str());
 	}
 
-	qBasis_->CalcFilters(audio_->GetSampleRate(), fMinOctave, nFilters, sparsity);
+	qBasis_->CalcFilters(rateInitial_, fMinOctave, nFilters, sparsity);
 #ifdef _DEBUG
 	assert(nFft == 0 or nFft == qBasis_->GetFftFrameLen() and
 		"STFT frame length has changed, but it should not");
 #endif
 	if (not stft_) stft_ = make_unique<ShortTimeFourier>(qBasis_->GetFftFrameLen(),
 		ShortTimeFourier::STFT_WINDOW::RECT, isPadReflect);
-
-	const auto rateInitial(audio_->GetSampleRate());
 
 	for (int i(0); i < nOctaves; ++i)
 	{
@@ -100,7 +99,7 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 
 	assert(cqtResp_.size() == nBins and "Wrong CQT-spectrum size");
 	TrimErrors();
-	Scale(rateInitial, fMin, toScale);
+	Scale(rateInitial_, fMin, toScale);
 
 	// Eventually, we can flatten the array, and get rid of temporary 2D-buffer:
 	cqt_.resize(cqtResp_.size() * cqtResp_.front().size());
@@ -139,7 +138,8 @@ void ConstantQ::EarlyDownsample(const bool isKaiserFast,
 		throw CqtError(os.str().c_str());
 	}
 	
-	audio_->MonoResample(audio_->GetSampleRate() / downSampleFactor);
+	audio_->MonoResample(rateInitial_ / downSampleFactor);
+	rateInitial_ = audio_->GetSampleRate();
 }
 
 void ConstantQ::HalfDownSample(const int nOctaves)

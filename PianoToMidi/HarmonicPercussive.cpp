@@ -146,11 +146,11 @@ void HarmonicPercussive::OnsetEnvelope(const size_t lag, const int maxSize,
 			{ maxSize, 1 }, ipp32f, 1, &buffSize));
 		vector<Ipp8u> buff(static_cast<size_t>(buffSize));
 
-		ippiFilterMaxBorder_32f_C1R(percRef.data(), static_cast<int>(cqt_->GetNumBins()
-			* sizeof percRef.front()), percRef.data(), static_cast<int>(cqt_->GetNumBins()
-				* sizeof percRef.front()), { static_cast<int>(cqt_->GetNumBins()),
-			static_cast<int>(percRef.size() / cqt_->GetNumBins()) },
-			{ maxSize, 1 }, ippBorderConst, 0, buff.data());
+		CHECK_IPP_RESULT(ippiFilterMaxBorder_32f_C1R(percRef.data(),
+			static_cast<int>(cqt_->GetNumBins() * sizeof percRef.front()), percRef.data(),
+			static_cast<int>(cqt_->GetNumBins() * sizeof percRef.front()),
+			{ static_cast<int>(cqt_->GetNumBins()), static_cast<int>(percRef.size()
+				/ cqt_->GetNumBins()) }, { maxSize, 1 }, ippBorderConst, 0, buff.data()));
 	}
 	CHECK_IPP_RESULT(ippsSub_32f_I(percRef.data(),
 		percDiff.data(), static_cast<int>(percDiff.size())));
@@ -210,4 +210,106 @@ void HarmonicPercussive::OnsetEnvelope(const size_t lag, const int maxSize,
 	}
 
 	if (toCenter) percEnv_.resize(perc_.size() / cqt_->GetNumBins()); // Trim to match the input duration
+}
+
+void HarmonicPercussive::OnsetPeaksDetect(const bool toBackTrack)
+{
+	percPeaks_.clear();
+	// Do we have any onsets to grab?
+	if (all_of(percEnv_.cbegin(), percEnv_.cend(), bind1st(equal_to<float>(), 0.f))) return;
+
+	// If onset envelope calculated with toDetrend=true, IIR filter may produce negative values.
+	// So, shift up (a common normalization step to make the threshold more consistent):
+	Ipp32f percEnvMinVal, percEnvMaxVal;
+	CHECK_IPP_RESULT(ippsMinMax_32f(percEnv_.data(), static_cast<int>(percEnv_.size()),
+		&percEnvMinVal, &percEnvMaxVal));
+	CHECK_IPP_RESULT(ippsNormalize_32f_I(percEnv_.data(), static_cast<int>(percEnv_.size()),
+		percEnvMinVal, percEnvMaxVal - percEnvMinVal)); // normalize to [0, 1] range
+#ifdef _DEBUG
+	const auto minMax(minmax_element(percEnv_.cbegin(), percEnv_.cend()));
+	assert(*minMax.first >= 0 and *minMax.first < numeric_limits<float>::epsilon()
+		and "Onset envelope shifted incorrectly");
+	assert (*minMax.second > 1 - numeric_limits<float>::epsilon() and *minMax.second <= 1
+		and "Onset envelope not normalized");
+#endif
+
+	/* Flexible heuristic with the following three conditions:
+		1. x[n] == max(x[n - preMax : n + postMax])
+		2. x[n] >= mean(x[n - preAvg : n + postAvg]) + delta
+		3. n - previous_n (last peak) > wait (greedy)
+
+		Where parameter settings found by large-scale hyper-parameter optimization
+		over the dataset from https://github.com/CPJKU/onset_db
+
+		1. Boeck, Sebastian, Florian Krebs, and Markus Schedl.
+			"Evaluating the Online Capabilities of Onset Detection Methods." ISMIR, 2012.
+		2. https://github.com/CPJKU/onset_detection/blob/master/onset_program.py */
+
+	int maxLen(static_cast<int>(ceil(.03 * cqt_->GetSampleRate() / cqt_->GetHopLength()))); // 30ms
+	maxLen += maxLen % 2 + 1; // odd filter size, just in case
+	vector<float> percEnvMax(percEnv_.size() + maxLen / 2); // maximums over a sliding window
+	// Shift right, so that anchor point is not center but right-end:
+	const auto unusedIter(copy(percEnv_.cbegin(), percEnv_.cend(), percEnvMax.begin() + maxLen / 2));
+
+	int buffSize;
+	CHECK_IPP_RESULT(ippiFilterMaxBorderGetBufferSize(
+		{ static_cast<int>(percEnvMax.size()), 1 }, { maxLen, 1 }, ipp32f, 1, &buffSize));
+	vector<Ipp8u> buff(static_cast<size_t>(buffSize));
+	const Ipp32f borderVal(0);	// 'Constant' mode with value = 0 (x.min())
+	// effectively truncates the maximum sliding window at the boundaries
+	CHECK_IPP_RESULT(ippiFilterMaxBorder_32f_C1R(percEnvMax.data(),
+		static_cast<int>(percEnvMax.size() * sizeof percEnvMax.front()), percEnvMax.data(),
+		static_cast<int>(percEnvMax.size() * sizeof percEnvMax.front()), { static_cast<int>(
+			percEnvMax.size()), 1 }, { maxLen, 1 }, ippBorderConst, borderVal, buff.data()));
+	percEnvMax.resize(percEnv_.size()); // previously was shifted right, now truncate from right
+
+
+	// 200ms (100ms before & after):
+	auto avgLen(static_cast<int>(ceil(.2f * cqt_->GetSampleRate() / cqt_->GetHopLength())));
+	avgLen += avgLen % 2 + 1; // odd filter size, just in case
+	vector<float> percEnvSum(percEnv_); // Sums (--> means) over a sliding window
+	// No need to shift right here, because central anchor point is what we need
+
+	CHECK_IPP_RESULT(ippiSumWindowGetBufferSize(
+		{ static_cast<int>(percEnvSum.size()), 1 }, { avgLen, 1 }, ipp32f, 1, &buffSize));
+	buff.resize(static_cast<size_t>(buffSize));
+	CHECK_IPP_RESULT(ippiSumWindow_32f_C1R(percEnvSum.data(),
+		static_cast<int>(percEnvSum.size() * sizeof percEnvSum.front()), percEnvSum.data(),
+		static_cast<int>(percEnvSum.size() * sizeof percEnvSum.front()), { static_cast<int>(
+			percEnvSum.size()), 1 }, { avgLen, 1 }, ippBorderConst, &borderVal, buff.data()));
+
+	const auto wait(static_cast<int>(ceil(.03f * cqt_->GetSampleRate() / cqt_->GetHopLength())));
+	for (size_t i(0); i < percEnv_.size(); ++i) // Greedily remove onsets closer than 30ms:
+		if ((percPeaks_.empty() or i > percPeaks_.back() + wait)
+			and percEnv_.at(i) == percEnvMax.at(i) // Mask out entries not equal to the local max
+			// Then mask out all entries less than the thresholded average:
+			and percEnv_.at(i) - percEnvSum.at(i) / ( // Correct sliding average
+				// in the ranges where the window needs to be truncated:
+				min(avgLen / 2, static_cast<int>(i)) // at the beginning
+				+ min(avgLen / 2, static_cast<int>(percEnv_.size() - i - 1)) // at the end
+				+ 1) >= .07f) percPeaks_.emplace_back(i);
+
+	if (toBackTrack) OnsetBackTrack();
+}
+
+void HarmonicPercussive::OnsetBackTrack()
+{
+	/* Roll back onset events from a peak amplitude to the nearest preceding energy minimum.
+	Primarily useful when using onsets as slice points for segmentation, as described by:
+	Jehan, Tristan. "Creating music by listening"
+	Doctoral dissertation
+	Massachusetts Institute of Technology, 2005. */
+
+	assert(not percPeaks_.empty() and "Attempting to back-track empty onsets array");
+	size_t i(percPeaks_.back()), j(percPeaks_.size() - 1);
+	if (i-- == 0) return;
+
+	for (; i; --i) if (percEnv_.at(i) <= percEnv_.at(i - 1) // Energy non-increasing
+		and percEnv_.at(i) < percEnv_.at(i + 1))
+	{
+		for (; j and percPeaks_.at(j) > i; --j) percPeaks_.at(j) = i;
+		if (j == 0 and percPeaks_.front() > i) break;
+		i = percPeaks_.at(j) + 1;
+	}
+	for (size_t k(0); k <= j; ++k) percPeaks_.at(k) = i;
 }
