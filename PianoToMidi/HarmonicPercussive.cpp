@@ -1,8 +1,9 @@
 ﻿#include "stdafx.h"
 
 #include "AlignedVector.h"
-#include "HarmonicPercussive.h"
+#include "EnumTypes.h"
 #include "ConstantQ.h"
+#include "HarmonicPercussive.h"
 
 #include "IntelCheckStatus.h"
 
@@ -38,7 +39,7 @@ void SoftMask(vector<float>* xInOut, const vector<float>& xRef, float power, boo
 HarmonicPercussive::HarmonicPercussive(const shared_ptr<ConstantQ>& cqt,
 	const int kernelHarm, const int kernelPerc, const float power,
 	const float margHarm, const float margPerc)
-	: cqt_(cqt)
+	: cqt_(cqt), baseC_(false), nChroma_(0)
 {
 	/*	1. Fitzgerald, Derry.
 			"Harmonic/percussive separation using median filtering."
@@ -118,6 +119,7 @@ HarmonicPercussive::HarmonicPercussive(const shared_ptr<ConstantQ>& cqt,
 	CHECK_IPP_RESULT(ippsMul_32f_I(cqt->GetCQT().data(), harm_.data(), static_cast<int>(harm_.size())));
 	CHECK_IPP_RESULT(ippsMul_32f_I(cqt->GetCQT().data(), perc_.data(), static_cast<int>(perc_.size())));
 }
+
 
 void HarmonicPercussive::OnsetEnvelope(const size_t lag, const int maxSize,
 	const bool toDetrend, const bool toCenter, const AGGREGATE aggr) //centering = None
@@ -312,4 +314,188 @@ void HarmonicPercussive::OnsetBackTrack()
 		i = percPeaks_.at(j) + 1;
 	}
 	for (size_t k(0); k <= j; ++k) percPeaks_.at(k) = i;
+}
+
+
+void HarmonicPercussive::Chromagram(const bool baseC, const NORM_TYPE norm,
+	const float threshold, const size_t nChroma, const WIN_FUNC window)
+{
+	using juce::dsp::WindowingFunction;
+
+	assert(cqt_->GetBinsPerOctave() % nChroma == 0 and "Incompatible Constant-Q merge"
+		and "Input bins must be an integer multiple of output bins");
+	const auto nMerge(cqt_->GetBinsPerOctave() / nChroma); // How many fractional bins to merge
+
+	// Tile the identity to merge fractional bins, and roll left to center on the target bin:
+	vector<vector<float>> cq2Ch(nChroma, vector<float>(
+		static_cast<size_t>(cqt_->GetBinsPerOctave()), 0));
+	for (size_t j(0); j < min(cq2Ch.front().size(), nMerge / 2 + nMerge % 2); ++j)
+		cq2Ch.front().at(j) = 1;
+	for (size_t j(cq2Ch.front().size() - nMerge / 2); j < cq2Ch.front().size(); ++j)
+		cq2Ch.front().at(j) = 1;
+	for (size_t i(1); i < cq2Ch.size(); ++i) for (size_t j(i * nMerge - nMerge / 2);
+		j < (i + 1) * nMerge - nMerge / 2; ++j) cq2Ch.at(i).at(j) = 1;
+
+	vector<float>::iterator unusedIter;
+	const auto nOctaves(static_cast<int>(ceil( 	// How many octaves are we repeating?
+		static_cast<float>(cqt_->GetNumBins()) / cqt_->GetBinsPerOctave())));
+	for (auto& row : cq2Ch)
+	{
+		row.resize(row.size() * nOctaves); // repeat, then trim:
+		for (ptrdiff_t i(1); i < nOctaves; ++i) unusedIter = copy(row.cbegin(), row.cbegin()
+			+ cqt_->GetBinsPerOctave(), row.begin() + i * cqt_->GetBinsPerOctave());
+		row.resize(cqt_->GetNumBins()); // trim
+	}
+
+	const auto midi(static_cast<int>(round(12 * ( // First note bin in the CQT:
+		log2(cqt_->GetMinFrequency()) - log2(440.f)) + 69)));
+	baseC_ = baseC;
+	const auto roll((midi + (baseC ? 0 : 3)) % 12); // Midi uses 12 bins per octave
+	const auto unusedIter2D(rotate(cq2Ch.begin(), cq2Ch.end()
+		// How many chroma we want out, need to be careful with rounding:
+		- static_cast<ptrdiff_t>(round(roll * (nChroma / 12.))), cq2Ch.end()));
+
+	if (window != WIN_FUNC::RECT)
+	{
+		WindowingFunction<float>::WindowingMethod winMethod;
+		switch (window)
+		{
+		case WIN_FUNC::RECT:			winMethod = WindowingFunction<float>::rectangular;		break;
+		case WIN_FUNC::HANN:			winMethod = WindowingFunction<float>::hann;				break;
+		case WIN_FUNC::HAMMING:			winMethod = WindowingFunction<float>::hamming;			break;
+		case WIN_FUNC::BLACKMAN:		winMethod = WindowingFunction<float>::blackman;			break;
+		case WIN_FUNC::BLACKMAN_HARRIS:	winMethod = WindowingFunction<float>::blackmanHarris;	break;
+		case WIN_FUNC::FLAT_TOP:		winMethod = WindowingFunction<float>::flatTop;			break;
+		case WIN_FUNC::KAISER:			winMethod = WindowingFunction<float>::kaiser;			break;
+		case WIN_FUNC::TRIAG:			winMethod = WindowingFunction<float>::triangular;		break;
+		default:						assert(!"Not all windowing functions checked");
+										winMethod = WindowingFunction<float>::numWindowingMethods;
+		}
+		WindowingFunction<float> winFunc(cq2Ch.front().size(), winMethod, false);
+		for (auto& row : cq2Ch) winFunc.multiplyWithWindowingTable(row.data(), row.size());
+	}
+
+	AlignedVector<float> cq2ChFlat(cq2Ch.size() * cq2Ch.front().size());
+	for (size_t i(0); i < cq2Ch.size(); ++i) unusedIter = copy(cq2Ch.at(i).cbegin(),
+		cq2Ch.at(i).cend(), cq2ChFlat.begin() + static_cast<ptrdiff_t>(i * cq2Ch.at(i).size()));
+	assert(harm_.size() % cqt_->GetNumBins() == 0 and "Harmonic spectrum is not rectangular");
+	chroma_.resize(harm_.size() / cqt_->GetNumBins() * cq2Ch.size());
+
+	auto harmAmp(harm_); // Convert decibels back to amplitude before calculating chromagram
+	// Db to Power = 10^(Sdb / 10) ==> sqrt(Db2Power) ~= 10^(Sdb / 20)
+	// but shift Sdb back to negative zone, so that result will be between zero and one:
+	Ipp32f maxVal;
+	CHECK_IPP_RESULT(ippsMax_32f(harmAmp.data(),
+		static_cast<int>(harmAmp.size()), &maxVal));
+	CHECK_IPP_RESULT(ippsNormalize_32f_I(harmAmp.data(),
+		static_cast<int>(harmAmp.size()), -maxVal, 20));
+	vsExp10(static_cast<int>(harmAmp.size()), harmAmp.data(), harmAmp.data());
+
+	cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, static_cast<int>(cq2Ch.size()),
+		static_cast<int>(harmAmp.size() / cqt_->GetNumBins()), static_cast<int>(cqt_->GetNumBins()),
+		1, cq2ChFlat.data(), static_cast<int>(cqt_->GetNumBins()), harmAmp.data(),
+		static_cast<int>(cqt_->GetNumBins()), 0, chroma_.data(),
+		static_cast<int>(harmAmp.size() / cqt_->GetNumBins()));
+	nChroma_ = nChroma; // for ChromaSum
+
+	// Pre-normalization energy threshold, producing a sparse chromagram:
+	if (threshold != 0) CHECK_IPP_RESULT(ippsThreshold_LTVal_32f_I(
+		chroma_.data(), static_cast<int>(chroma_.size()), threshold, 0));
+
+	if (norm == NORM_TYPE::NONE) return;
+	IppStatus(*NormFunc)(const Ipp32f* src, int len, Ipp32f* normVal);
+	switch (norm)
+	{
+	case NORM_TYPE::NONE:	NormFunc = nullptr;				break;
+	case NORM_TYPE::L1:		NormFunc = &ippsNorm_L1_32f;	break;
+	case NORM_TYPE::L2:		NormFunc = &ippsNorm_L2_32f;	break;
+	case NORM_TYPE::INF:	NormFunc = &ippsNorm_Inf_32f;	break;
+	default: assert(!"Not all normalization types checked"); NormFunc = nullptr;
+	}
+
+	MKL_Simatcopy('R', 'T', nChroma, chroma_.size() / nChroma,
+		1, chroma_.data(), chroma_.size() / nChroma, nChroma);
+	for (size_t i(0); i < chroma_.size() / nChroma; ++i)
+	{
+		Ipp32f norm32(0);
+		if (NormFunc) CHECK_IPP_RESULT(NormFunc(chroma_.data()
+			+ static_cast<ptrdiff_t>(i * nChroma), static_cast<int>(nChroma), &norm32));
+		assert(norm32 && "Norm factor not calculated");
+		CHECK_IPP_RESULT(ippsDivC_32f_I(norm32, chroma_.data()
+			+ static_cast<ptrdiff_t>(i * nChroma), static_cast<int>(nChroma)));
+	}
+}
+
+void HarmonicPercussive::ChromaSum(const bool onsetsOnly)
+{
+	assert(nChroma_ and "Did you forget to call Chromagram?");
+
+	chrSum_.assign(nChroma_, 0);
+	if (onsetsOnly) for (size_t i(0); i < chrSum_.size(); ++i) for (const auto onset : percPeaks_)
+		chrSum_.at(i) += chroma_.at(onset * chrSum_.size() + i);
+	else
+	{
+		auto chromaTrans(chroma_);
+		MKL_Simatcopy('R', 'T', chromaTrans.size() / nChroma_, nChroma_,
+			1, chromaTrans.data(), nChroma_, chromaTrans.size() / nChroma_);
+
+		for (size_t i(0); i < chrSum_.size(); ++i)
+			CHECK_IPP_RESULT(ippsSum_32f(chromaTrans.data() + static_cast<ptrdiff_t>(
+				i * chromaTrans.size() / chrSum_.size()), static_cast<int>(chromaTrans.size()
+					/ chrSum_.size()), &chrSum_.at(i), ippAlgHintFast));
+	}
+}
+
+string HarmonicPercussive::KeySignature() const
+{
+	/* Carol L. Krumhansl and Mark A. Schmuckler (http://rnhart.net/articles/key-finding/)
+	The profile numbers came from experiments done by Krumhansl and Edward J. Kessler.
+	The experiments consisted of playing a set of context tones or chords, playing a probe tone,
+	and asking a listener to rate how well the probe tone fit with the context.
+
+	Carol L. Krumhansl "Cognitive Foundations of Musical Pitch"
+
+	The experiments are described in Chapter 2, the key-finding algorithm in Chapter 4 */
+
+	assert(chrSum_.size() == 12 and
+		"Need to calculate chroma pitch profile before estimating key signature");
+	vector<float>
+		cMajor({ 6.35f, 2.23f, 3.48f, 2.33f, 4.38f, 4.09f, 2.52f, 5.19f, 2.39f, 3.66f, 2.29f, 2.88f }),
+		aMinor({ 6.33f, 2.68f, 3.52f, 5.38f, 2.60f, 3.53f, 2.54f, 4.75f, 3.98f, 2.69f, 3.34f, 3.17f }),
+		profile(chrSum_);
+
+	Ipp32f ippVal; // Substract mean for correlation calculation:
+	CHECK_IPP_RESULT(ippsMean_32f(profile.data(),
+		static_cast<int>(profile.size()), &ippVal, ippAlgHintFast));
+	CHECK_IPP_RESULT(ippsSubC_32f_I(ippVal, profile.data(), static_cast<int>(profile.size())));
+	CHECK_IPP_RESULT(ippsMean_32f(cMajor.data(),
+		static_cast<int>(cMajor.size()), &ippVal, ippAlgHintFast));
+	CHECK_IPP_RESULT(ippsSubC_32f_I(ippVal, cMajor.data(), static_cast<int>(cMajor.size())));
+	CHECK_IPP_RESULT(ippsMean_32f(aMinor.data(),
+		static_cast<int>(aMinor.size()), &ippVal, ippAlgHintFast));
+	CHECK_IPP_RESULT(ippsSubC_32f_I(ippVal, aMinor.data(), static_cast<int>(aMinor.size())));
+
+	vector<float>::iterator unusedIter;
+	vector<float> corrMajor(cMajor.size()), corrMinor(aMinor.size()),
+		xyProd(chrSum_.size()); // denominator will always be the same,
+		// so will only compare numerators (sum of x*y products)
+	for (size_t i(0); i < chrSum_.size(); ++i)
+	{
+		CHECK_IPP_RESULT(ippsMul_32f(profile.data(), cMajor.data(),
+			xyProd.data(), static_cast<int>(xyProd.size())));
+		CHECK_IPP_RESULT(ippsSum_32f(xyProd.data(),
+			static_cast<int>(xyProd.size()), &corrMajor.at(i), ippAlgHintFast));
+		CHECK_IPP_RESULT(ippsMul_32f(profile.data(), aMinor.data(),
+			xyProd.data(), static_cast<int>(xyProd.size())));
+		CHECK_IPP_RESULT(ippsSum_32f(xyProd.data(),
+			static_cast<int>(xyProd.size()), &corrMinor.at(i), ippAlgHintFast));
+		unusedIter = rotate(profile.begin(), profile.begin() + 1, profile.end());
+	}
+
+	vector<string> notes({ "A", "Bb", "B", "C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab" });
+	if (baseC_) const auto unusedIterStr(rotate(notes.begin(), notes.begin() + 3, notes.end()));
+	const auto maxMajor(max_element(corrMajor.cbegin(), corrMajor.cend()) - corrMajor.cbegin()),
+		maxMinor(max_element(corrMinor.cbegin(), corrMinor.cend()) - corrMinor.cbegin());
+	return move(notes.at(static_cast<size_t>(maxMajor > maxMinor
+		? maxMajor : ((maxMinor + 9) % 12))) + (maxMajor > maxMinor ? "" : "m"));
 }

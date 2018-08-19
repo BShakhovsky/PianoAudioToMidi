@@ -72,6 +72,9 @@
     <ClInclude Include="HarmonicPercussive.h">
       <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
+    <ClInclude Include="EnumTypes.h">
+      <Filter>Header Files\Spectrums</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

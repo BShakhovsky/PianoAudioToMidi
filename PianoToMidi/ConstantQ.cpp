@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "AlignedVector.h"
+#include "EnumTypes.h"
 #include "ConstantQ.h"
 #include "AudioLoader.h"
 
@@ -24,7 +25,8 @@ int Num2factors(int x)
 ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nBins,
 	const int octave, const float fMin, const int hopLen, const float filtScale, const NORM_TYPE norm,
 	const float sparsity, const CQT_WINDOW window, const bool toScale, const bool isPadReflect)
-	: nBins_(nBins), hopLen_(hopLen), hopLenReduced_(hopLen),
+	: nBins_(nBins), fMin_(fMin), octave_(octave),
+	hopLen_(hopLen), hopLenReduced_(hopLen),
 	rateInitial_(audio->GetSampleRate()),
 	qBasis_(make_unique<CqtBasis>(octave, filtScale, norm, window)),
 	stft_(nullptr), audio_(audio)
@@ -63,8 +65,8 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 #ifdef _DEBUG
 		nFft = qBasis_->GetFftFrameLen();
 #endif
-		stft_ = make_unique<ShortTimeFourier>(qBasis_->GetFftFrameLen(),
-			ShortTimeFourier::STFT_WINDOW::RECT, isPadReflect);
+		stft_ = make_unique<ShortTimeFourier>(
+			qBasis_->GetFftFrameLen(), WIN_FUNC::RECT, isPadReflect);
 		Response();
 
 		fMinOctave /= 2;
@@ -88,8 +90,8 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 	assert(nFft == 0 or nFft == qBasis_->GetFftFrameLen() and
 		"STFT frame length has changed, but it should not");
 #endif
-	if (not stft_) stft_ = make_unique<ShortTimeFourier>(qBasis_->GetFftFrameLen(),
-		ShortTimeFourier::STFT_WINDOW::RECT, isPadReflect);
+	if (not stft_) stft_ = make_unique<ShortTimeFourier>(
+		qBasis_->GetFftFrameLen(), WIN_FUNC::RECT, isPadReflect);
 
 	for (int i(0); i < nOctaves; ++i)
 	{
@@ -99,7 +101,7 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 
 	assert(cqtResp_.size() == nBins and "Wrong CQT-spectrum size");
 	TrimErrors();
-	Scale(rateInitial_, fMin, toScale);
+	Scale(rateInitial_, toScale);
 
 	// Eventually, we can flatten the array, and get rid of temporary 2D-buffer:
 	cqt_.resize(cqtResp_.size() * cqtResp_.front().size());
@@ -203,11 +205,11 @@ void ConstantQ::TrimErrors()
 	reverse(cqtResp_.begin(), cqtResp_.end());
 }
 
-void ConstantQ::Scale(const int rateInit, const float fMin, const bool toScale)
+void ConstantQ::Scale(const int rateInit, const bool toScale)
 {
 	if (not toScale) return;
 
-	qBasis_->CalcLengths(rateInit, fMin, cqtResp_.size());
+	qBasis_->CalcLengths(rateInit, fMin_, cqtResp_.size());
 	assert(qBasis_->GetLengths().size() == nBins_ and "Wrong number of CQT-lengths");
 	CHECK_IPP_RESULT(ippsSqrt_32f_I(qBasis_->GetLengths().data(), static_cast<int>(nBins_)));
 
@@ -219,28 +221,7 @@ void ConstantQ::Scale(const int rateInit, const float fMin, const bool toScale)
 void ConstantQ::Amplitude2power() { CHECK_IPP_RESULT(
 	ippsSqr_32f_I(cqt_.data(), static_cast<int>(cqt_.size()))); }
 
-void ConstantQ::TrimSilence(const float aMin, const float topDb)
-{
-	vector<Ipp32f> mse(cqt_.size() / nBins_); // Mean-square energy:
-	for (size_t i(0); i < mse.size(); ++i) CHECK_IPP_RESULT(ippsMean_32f(cqt_.data()
-		+ static_cast<ptrdiff_t>(i * nBins_), static_cast<int>(nBins_), &mse.at(i), ippAlgHintFast));
-
-	Ipp32f mseMax;
-	CHECK_IPP_RESULT(ippsMax_32f(mse.data(), static_cast<int>(mse.size()), &mseMax));
-	Power2db_helper(mse.data(), static_cast<int>(mse.size()), mseMax, aMin, 0);
-
-	const auto iterStart(find_if(mse.cbegin(), mse.cend(),
-		[topDb](Ipp32f mse_i) { return mse_i > -topDb; }));
-	const auto iterEnd(find_if(mse.crbegin(), mse.crend(),
-		[topDb](Ipp32f mse_i) { return mse_i > -topDb; }));
-
-	const auto unusedIter(cqt_.erase(cqt_.cbegin(),
-		cqt_.cbegin() + (iterStart - mse.cbegin()) * static_cast<ptrdiff_t>(nBins_)));
-	cqt_.resize(cqt_.size() - (iterEnd - mse.crbegin()) * static_cast<ptrdiff_t>(nBins_));
-	assert(cqt_.size() % nBins_ == 0 and "CQT is not rectangular after silence trimming");
-}
-
-void ConstantQ::Power2db_helper(float* spectr, const int size,
+void Power2db_helper(float* spectr, const int size,
 	const float ref, const float aMin, const float topDb)
 {
 	assert(*min_element(spectr, spectr + size) >= 0 and
@@ -262,4 +243,28 @@ void ConstantQ::Power2db_helper(float* spectr, const int size,
 		CHECK_IPP_RESULT(ippsMax_32f(spectr, size, &maxDb));
 		CHECK_IPP_RESULT(ippsThreshold_LT_32f_I(spectr, size, maxDb - topDb));
 	}
+}
+
+void ConstantQ::Power2db(const float ref, const float aMin, const float topDb)
+{ Power2db_helper(cqt_.data(), static_cast<int>(cqt_.size()), ref, aMin, topDb); }
+
+void ConstantQ::TrimSilence(const float aMin, const float topDb)
+{
+	vector<Ipp32f> mse(cqt_.size() / nBins_); // Mean-square energy:
+	for (size_t i(0); i < mse.size(); ++i) CHECK_IPP_RESULT(ippsMean_32f(cqt_.data()
+		+ static_cast<ptrdiff_t>(i * nBins_), static_cast<int>(nBins_), &mse.at(i), ippAlgHintFast));
+
+	Ipp32f mseMax;
+	CHECK_IPP_RESULT(ippsMax_32f(mse.data(), static_cast<int>(mse.size()), &mseMax));
+	Power2db_helper(mse.data(), static_cast<int>(mse.size()), mseMax, aMin, 0);
+
+	const auto iterStart(find_if(mse.cbegin(), mse.cend(),
+		[topDb](Ipp32f mse_i) { return mse_i > -topDb; }));
+	const auto iterEnd(find_if(mse.crbegin(), mse.crend(),
+		[topDb](Ipp32f mse_i) { return mse_i > -topDb; }));
+
+	const auto unusedIter(cqt_.erase(cqt_.cbegin(),
+		cqt_.cbegin() + (iterStart - mse.cbegin()) * static_cast<ptrdiff_t>(nBins_)));
+	cqt_.resize(cqt_.size() - (iterEnd - mse.crbegin()) * static_cast<ptrdiff_t>(nBins_));
+	assert(cqt_.size() % nBins_ == 0 and "CQT is not rectangular after silence trimming");
 }

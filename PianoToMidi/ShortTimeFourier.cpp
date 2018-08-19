@@ -1,12 +1,13 @@
 #include "stdafx.h"
 #include "AlignedVector.h"
+#include "EnumTypes.h"
 #include "ShortTimeFourier.h"
 
 using namespace std;
 using namespace juce::dsp;
 
 ShortTimeFourier::ShortTimeFourier(const size_t frameLen,
-	const STFT_WINDOW window, const bool isPadReflected) noexcept
+	const WIN_FUNC window, const bool isPadReflected) noexcept
 	: frameLen_(frameLen), isPadReflect_(isPadReflected),
 	fft_(make_unique<FFT>(int(log2(frameLen)))),
 	nFrames_(0ull), nFreqs_(frameLen / 2 + 1)
@@ -85,26 +86,21 @@ void ShortTimeFourier::PadCentered(const float* src, const size_t srcSize,
 	unusedIter = reverse_copy(iter - distance(iter, dest->end()) - 1, iter - 1, iter);
 }
 
-void ShortTimeFourier::GetStftWindow(const STFT_WINDOW window)
+void ShortTimeFourier::GetStftWindow(const WIN_FUNC window)
 {
+	WindowingFunction<float>::WindowingMethod winFunc;
 	switch (window)
 	{
-	case STFT_WINDOW::RECT:				window_ = make_unique<WindowingFunction<float>>(
-		static_cast<size_t>(frameLen_), WindowingFunction<float>::rectangular, false);		break;
-	case STFT_WINDOW::HANN:				window_ = make_unique<WindowingFunction<float>>(
-		static_cast<size_t>(frameLen_), WindowingFunction<float>::hann, false);				break;
-	case STFT_WINDOW::HAMMING:			window_ = make_unique<WindowingFunction<float>>(
-		static_cast<size_t>(frameLen_), WindowingFunction<float>::hamming, false);			break;
-	case STFT_WINDOW::BLACKMAN:			window_ = make_unique<WindowingFunction<float>>(
-		static_cast<size_t>(frameLen_), WindowingFunction<float>::blackman, false);			break;
-	case STFT_WINDOW::BLACKMAN_HARRIS:	window_ = make_unique<WindowingFunction<float>>(
-		static_cast<size_t>(frameLen_), WindowingFunction<float>::blackmanHarris, false);	break;
-	case STFT_WINDOW::FLAT_TOP:			window_ = make_unique<WindowingFunction<float>>(
-		static_cast<size_t>(frameLen_), WindowingFunction<float>::flatTop, false);			break;
-	case STFT_WINDOW::KAISER:			window_ = make_unique<WindowingFunction<float>>(
-		static_cast<size_t>(frameLen_), WindowingFunction<float>::kaiser, false);			break;
-	case STFT_WINDOW::TRIAG:			window_ = make_unique<WindowingFunction<float>>(
-		static_cast<size_t>(frameLen_), WindowingFunction<float>::triangular, false);		break;
-	default: assert(!"Not all STFT windowing functions checked"); window_ = nullptr;
+	case WIN_FUNC::RECT:			winFunc = WindowingFunction<float>::rectangular;	break;
+	case WIN_FUNC::HANN:			winFunc = WindowingFunction<float>::hann;			break;
+	case WIN_FUNC::HAMMING:			winFunc = WindowingFunction<float>::hamming;		break;
+	case WIN_FUNC::BLACKMAN:		winFunc = WindowingFunction<float>::blackman;		break;
+	case WIN_FUNC::BLACKMAN_HARRIS:	winFunc = WindowingFunction<float>::blackmanHarris;	break;
+	case WIN_FUNC::FLAT_TOP:		winFunc = WindowingFunction<float>::flatTop;		break;
+	case WIN_FUNC::KAISER:			winFunc = WindowingFunction<float>::kaiser;			break;
+	case WIN_FUNC::TRIAG:			winFunc = WindowingFunction<float>::triangular;		break;
+	default:						assert(!"Not all windowing functions checked");
+									winFunc = WindowingFunction<float>::numWindowingMethods;
 	}
+	window_ = make_unique<WindowingFunction<float>>(static_cast<size_t>(frameLen_), winFunc, false);
 }

@@ -3,8 +3,7 @@
 class CqtBasis
 {
 public:
-	explicit CqtBasis(int binsPerOctave, float filterScale,
-		ConstantQ::NORM_TYPE norm = ConstantQ::NORM_TYPE::L1,
+	explicit CqtBasis(int binsPerOctave, float filterScale, NORM_TYPE norm = NORM_TYPE::L1,
 		ConstantQ::CQT_WINDOW window = ConstantQ::CQT_WINDOW::HANN);
 	~CqtBasis();
 
@@ -26,7 +25,7 @@ private:
 
 	const int octave_;
 	const float Q_;
-	const ConstantQ::NORM_TYPE norm_;
+	const NORM_TYPE norm_;
 	const ConstantQ::CQT_WINDOW window_;
 
 	std::vector<float> freqs_, lens_;

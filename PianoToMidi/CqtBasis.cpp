@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "AlignedVector.h"
+#include "EnumTypes.h"
 #include "ConstantQ.h"
 #include "CqtBasis.h"
 
@@ -14,7 +15,7 @@ using boost::alignment::is_aligned;
 #endif
 
 CqtBasis::CqtBasis(const int octave, const float scale,
-	const ConstantQ::NORM_TYPE norm, const ConstantQ::CQT_WINDOW window)
+	const NORM_TYPE norm, const ConstantQ::CQT_WINDOW window)
 	: octave_(octave), Q_(scale / (pow(2.f, 1.f / octave_) - 1)), norm_(norm), window_(window),
 	nFft_(0)
 {
@@ -73,6 +74,45 @@ void CqtBasis::CalcFilters(const int rate, const float fMin,
 	assert(nFft_ == static_cast<size_t>(fft.getSize()) &&
 		"Mistake in rounding to the nearest integral power of 2");
 
+	IppStatus(*WinFunc)(Ipp32fc* srcDst, int len);
+	switch (window_)
+	{
+	case ConstantQ::CQT_WINDOW::RECT:		WinFunc = [](Ipp32fc*, int) { return ippStsNoErr; };	break;
+	case ConstantQ::CQT_WINDOW::HANN:		WinFunc = &ippsWinHann_32fc_I;							break;
+	case ConstantQ::CQT_WINDOW::HAMMING:	WinFunc = &ippsWinHamming_32fc_I;						break;
+	default: assert(!"Not all CQT windowing functions checked"); WinFunc = nullptr;
+	}
+
+	IppStatus(*NormFunc)(const Ipp32fc* src, int len, Ipp32f* normVal);
+	switch (norm_)
+	{
+	case NORM_TYPE::NONE:	NormFunc = [](const Ipp32fc*, int, Ipp32f* normVal)
+	{
+		*normVal = 1;
+		return ippStsNoErr;
+	};
+							break;
+	case NORM_TYPE::L1:		NormFunc = [](const Ipp32fc* src, int len, Ipp32f* normVal)
+	{
+		Ipp64f norm64;
+		const auto status(ippsNorm_L1_32fc64f(src, len, &norm64));
+		*normVal = static_cast<Ipp32f>(norm64);
+		return status;
+	};
+							break;
+	case NORM_TYPE::L2:		NormFunc = [](const Ipp32fc* src, int len, Ipp32f* normVal)
+	{
+		Ipp64f norm64;
+		const auto status(ippsNorm_L2_32fc64f(src, len, &norm64));
+		*normVal = static_cast<Ipp32f>(norm64);
+		return status;
+	};
+							break;
+	case NORM_TYPE::INF:	NormFunc = &ippsNorm_Inf_32fc32f;
+							break;
+	default: assert(!"Not all normalization types checked"); NormFunc = nullptr;
+	}
+
 	for (size_t i(0); i < filts_.size(); ++i)
 	{
 		const auto offset((filts_.at(i).size() - static_cast<size_t>(lens_.at(i)) - 1) / 2);
@@ -87,36 +127,11 @@ void CqtBasis::CalcFilters(const int rate, const float fMin,
 		const auto buff(reinterpret_cast<Ipp32fc*>(filts_.at(i).data()) + offset);
 		const auto size(static_cast<int>(ceil(lens_.at(i))));
 
-		switch (window_)
-		{
-		case ConstantQ::CQT_WINDOW::RECT:							break;
-		case ConstantQ::CQT_WINDOW::HANN:		CHECK_IPP_RESULT(ippsWinHann_32fc_I(
-			// +1 if even to compensate for non-symmetry:
-			buff, size + 1 - static_cast<int>(lens_.at(i)) % 2));	break;
-		case ConstantQ::CQT_WINDOW::HAMMING:	CHECK_IPP_RESULT(ippsWinHamming_32fc_I(
-			buff, size + 1 - static_cast<int>(lens_.at(i)) % 2));	break;
-		default: assert(!"Not all CQT windowing functions checked");
-		}
-
+		// +1 if even to compensate for non-symmetry:
+		CHECK_IPP_RESULT(WinFunc(buff, size + 1 - static_cast<int>(lens_.at(i)) % 2));
+		
 		Ipp32f norm32(0);
-		switch (norm_)
-		{
-		case ConstantQ::NORM_TYPE::NONE: norm32 = 1; break;
-		case ConstantQ::NORM_TYPE::L1:
-		{
-			Ipp64f norm64;
-			CHECK_IPP_RESULT(ippsNorm_L1_32fc64f(buff, size, &norm64));
-			norm32 = static_cast<Ipp32f>(norm64);
-		} break;
-		case ConstantQ::NORM_TYPE::L2:
-		{
-			Ipp64f norm64;
-			CHECK_IPP_RESULT(ippsNorm_L2_32fc64f(buff, size, &norm64));
-			norm32 = static_cast<Ipp32f>(norm64);
-		} break;
-		case ConstantQ::NORM_TYPE::INF: CHECK_IPP_RESULT(ippsNorm_Inf_32fc32f(buff, size, &norm32)); break;
-		default: assert(!"Not all normalization types checked");
-		}
+		if (NormFunc) CHECK_IPP_RESULT(NormFunc(buff, size, &norm32));
 		assert(norm32 && "Norm factor not calculated");
 		CHECK_IPP_RESULT(ippsMulC_32fc_I({ lens_.at(i) / nFft_ / norm32, 0 }, buff, size));
 

@@ -12,11 +12,21 @@ public:
 		bool toCenter = true, AGGREGATE aggregate = AGGREGATE::MEAN);
 	void OnsetPeaksDetect(bool toBackTrack = false);
 
+	void Chromagram(bool baseC = true, // the first chroma bin will start at 'C', else at 'A'
+		NORM_TYPE norm = NORM_TYPE::INF, float threshold = 0.f, // if zero, threshold not performed
+		// to convolve the CQT to chroma filter bank:
+		size_t nChromaOutput = 12, WIN_FUNC window = WIN_FUNC::RECT);
+	void ChromaSum(bool onsetsOnly = true);
+	std::string KeySignature() const;
+
 	const std::vector<float>& GetHarmonic() const { return harm_; }
 	const std::vector<float>& GetPercussive() const { return perc_; }
 
 	const std::vector<float>& GetOnsetEnvelope() const { return percEnv_; }
 	const std::vector<size_t>& GetOnsetPeaks() const { return percPeaks_; }
+
+	const AlignedVector<float>& GetChromagram() const { return chroma_; }
+	const std::vector<float>& GetChromaSum() const { return chrSum_; }
 private:
 	void OnsetBackTrack();
 
@@ -24,4 +34,12 @@ private:
 
 	std::vector<float> harm_, perc_, percEnv_;
 	std::vector<size_t> percPeaks_;
+
+	const byte pad_[sizeof(intptr_t) - sizeof(bool)]{ 0 };
+	bool baseC_;
+	size_t nChroma_;
+	AlignedVector<float> chroma_;
+	std::vector<float> chrSum_;
+
+	HarmonicPercussive operator=(const HarmonicPercussive&) = delete;
 };

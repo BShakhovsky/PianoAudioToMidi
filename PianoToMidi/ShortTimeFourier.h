@@ -3,10 +3,8 @@
 class ShortTimeFourier
 {
 public:
-	enum class STFT_WINDOW { RECT, HANN, HAMMING, BLACKMAN, BLACKMAN_HARRIS, FLAT_TOP, KAISER, TRIAG };
-
 	explicit ShortTimeFourier(size_t frameLen = 2'048,
-		STFT_WINDOW window = STFT_WINDOW::HANN, bool isPadReflected = true) noexcept;
+		WIN_FUNC window = WIN_FUNC::HANN, bool isPadReflected = true) noexcept;
 	~ShortTimeFourier();
 
 	void RealForward(const float* rawAudio, size_t nSamples, int hopLen = 0);
@@ -18,7 +16,7 @@ public:
 private:
 	void PadCentered(const float* source, size_t srcSize,
 		AlignedVector<float>* dest, bool isModeReflect) const;
-	void GetStftWindow(STFT_WINDOW window);
+	void GetStftWindow(WIN_FUNC window);
 
 	const size_t frameLen_;
 	const bool isPadReflect_;
