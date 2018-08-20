@@ -69,7 +69,7 @@ int AudioLoader::GetSampleRate() const { return data_->codecContext->sample_rate
 size_t AudioLoader::GetNumSeconds() const
 {
 	assert("Did you call Decode()?" && !data_->rawData.empty());
-	return data_->rawData.size() / GetBytesPerSample() / GetSampleRate();
+	return GetNumSamples() / GetSampleRate();
 }
 
 #pragma warning(push)

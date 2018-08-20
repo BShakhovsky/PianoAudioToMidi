@@ -22,5 +22,5 @@ private:
 	bool isFrameReceived_;
 	const BYTE padding_[sizeof(INT_PTR) - sizeof(bool)]{ 0 };
 
-	Frame operator=(const Frame&) = delete;
+	const Frame& operator=(const Frame&) = delete;
 };

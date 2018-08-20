@@ -28,5 +28,5 @@ private:
 	size_t nFrames_, nFreqs_;
 
 	ShortTimeFourier(const ShortTimeFourier&) = delete;
-	ShortTimeFourier operator=(const ShortTimeFourier&) = delete;
+	const ShortTimeFourier& operator=(const ShortTimeFourier&) = delete;
 };

@@ -37,5 +37,5 @@ private:
 	std::unique_ptr<class SparseMatrix> csr_;
 
 	CqtBasis(const CqtBasis&) = delete;
-	CqtBasis operator=(const CqtBasis&) = delete;
+	const CqtBasis& operator=(const CqtBasis&) = delete;
 };

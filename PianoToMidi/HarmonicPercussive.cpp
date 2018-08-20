@@ -494,8 +494,9 @@ string HarmonicPercussive::KeySignature() const
 
 	vector<string> notes({ "A", "Bb", "B", "C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab" });
 	if (baseC_) const auto unusedIterStr(rotate(notes.begin(), notes.begin() + 3, notes.end()));
-	const auto maxMajor(max_element(corrMajor.cbegin(), corrMajor.cend()) - corrMajor.cbegin()),
-		maxMinor(max_element(corrMinor.cbegin(), corrMinor.cend()) - corrMinor.cbegin());
-	return move(notes.at(static_cast<size_t>(maxMajor > maxMinor
-		? maxMajor : ((maxMinor + 9) % 12))) + (maxMajor > maxMinor ? "" : "m"));
+	const auto maxMajor(max_element(corrMajor.cbegin(), corrMajor.cend())),
+		maxMinor(max_element(corrMinor.cbegin(), corrMinor.cend()));
+	return move(notes.at(static_cast<size_t>(*maxMajor > *maxMinor
+		? (maxMajor - corrMajor.cbegin()) : ((maxMinor - corrMinor.cbegin() + 9) % 12)))
+		+ (*maxMajor > *maxMinor ? "" : "m"));
 }

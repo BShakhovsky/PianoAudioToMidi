@@ -25,6 +25,12 @@
     <Filter Include="Source Files\Spectrums">
       <UniqueIdentifier>{54882ce4-97bd-4be7-bd41-8dc87153cabc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Keras CNN">
+      <UniqueIdentifier>{5a9aab5a-ad5d-45fd-8c14-94c71c3e6601}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Keras CNN">
+      <UniqueIdentifier>{ccdbd9a6-997b-46ac-bb97-ba2f3d9ebea4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -75,6 +81,12 @@
     <ClInclude Include="EnumTypes.h">
       <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
+    <ClInclude Include="KerasCnn.h">
+      <Filter>Header Files\Keras CNN</Filter>
+    </ClInclude>
+    <ClInclude Include="KerasError.h">
+      <Filter>Header Files\Keras CNN</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -106,6 +118,9 @@
     </ClCompile>
     <ClCompile Include="HarmonicPercussive.cpp">
       <Filter>Source Files\Spectrums</Filter>
+    </ClCompile>
+    <ClCompile Include="KerasCnn.cpp">
+      <Filter>Source Files\Keras CNN</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

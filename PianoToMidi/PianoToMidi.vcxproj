@@ -104,7 +104,7 @@
       <ConformanceMode>true</ConformanceMode>
       <EnablePREfast>true</EnablePREfast>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(FFmpeg);$(Juce);$(Boost);C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2018.3.210\windows\mkl\include;C:\Program Files (x86)\Visual Leak Detector\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FFmpeg);$(Juce);$(Boost);$(Fdeep);$(Fplus);$(Eigen);$(NLohmann);C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2018.3.210\windows\mkl\include;C:\Program Files (x86)\Visual Leak Detector\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -124,7 +124,7 @@
       <ConformanceMode>true</ConformanceMode>
       <EnablePREfast>true</EnablePREfast>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(FFmpeg);$(Juce);$(Boost);C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2018.3.210\windows\mkl\include;C:\Program Files (x86)\Visual Leak Detector\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FFmpeg);$(Juce);$(Boost);$(Fdeep);$(Fplus);$(Eigen);$(NLohmann);C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2018.3.210\windows\mkl\include;C:\Program Files (x86)\Visual Leak Detector\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -145,7 +145,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <EnablePREfast>true</EnablePREfast>
-      <AdditionalIncludeDirectories>$(FFmpeg);$(Juce);$(Boost);C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2018.3.210\windows\mkl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FFmpeg);$(Juce);$(Boost);$(Fdeep);$(Fplus);$(Eigen);$(NLohmann);C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2018.3.210\windows\mkl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -169,7 +169,7 @@
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <EnablePREfast>true</EnablePREfast>
-      <AdditionalIncludeDirectories>$(FFmpeg);$(Juce);$(Boost);C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2018.3.210\windows\mkl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FFmpeg);$(Juce);$(Boost);$(Fdeep);$(Fplus);$(Eigen);$(NLohmann);C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2018.3.210\windows\mkl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -191,6 +191,8 @@
     <ClInclude Include="FFmpegError.h" />
     <ClInclude Include="HarmonicPercussive.h" />
     <ClInclude Include="IntelCheckStatus.h" />
+    <ClInclude Include="KerasCnn.h" />
+    <ClInclude Include="KerasError.h" />
     <ClInclude Include="ShortTimeFourier.h" />
     <ClInclude Include="Frame.h" />
     <ClInclude Include="Packet.h" />
@@ -206,6 +208,7 @@
     <ClCompile Include="CqtBasis.cpp" />
     <ClCompile Include="FFmpegError.cpp" />
     <ClCompile Include="HarmonicPercussive.cpp" />
+    <ClCompile Include="KerasCnn.cpp" />
     <ClCompile Include="ShortTimeFourier.cpp" />
     <ClCompile Include="MonoResampler.cpp" />
     <ClCompile Include="IntelCheckStatus.cpp" />

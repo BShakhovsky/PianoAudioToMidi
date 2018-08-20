@@ -22,5 +22,5 @@ private:
 	bool isPacketRead_;
 	const BYTE padding_[sizeof(INT_PTR) - sizeof(bool)]{ 0 };
 
-	Packet operator=(const Packet&) = delete;
+	const Packet& operator=(const Packet&) = delete;
 };

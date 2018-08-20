@@ -27,5 +27,5 @@ private:
 	const std::unique_ptr<struct FFmpegData> data_;
 
 	AudioLoader(const AudioLoader&) = delete;
-	AudioLoader operator=(const AudioLoader&) = delete;
+	const AudioLoader& operator=(const AudioLoader&) = delete;
 };

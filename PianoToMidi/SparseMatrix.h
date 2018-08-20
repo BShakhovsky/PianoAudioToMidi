@@ -26,5 +26,5 @@ private:
 
 	sparse_matrix_t csr_;
 
-	SparseMatrix operator=(const SparseMatrix&) = delete;
+	const SparseMatrix& operator=(const SparseMatrix&) = delete;
 };

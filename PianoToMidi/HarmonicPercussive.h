@@ -19,14 +19,11 @@ public:
 	void ChromaSum(bool onsetsOnly = true);
 	std::string KeySignature() const;
 
+#pragma warning(push)
+#pragma warning(disable:4514) // Unreferenced inline function has been removed
 	const std::vector<float>& GetHarmonic() const { return harm_; }
-	const std::vector<float>& GetPercussive() const { return perc_; }
-
-	const std::vector<float>& GetOnsetEnvelope() const { return percEnv_; }
 	const std::vector<size_t>& GetOnsetPeaks() const { return percPeaks_; }
-
-	const AlignedVector<float>& GetChromagram() const { return chroma_; }
-	const std::vector<float>& GetChromaSum() const { return chrSum_; }
+#pragma warning(pop)
 private:
 	void OnsetBackTrack();
 
@@ -41,5 +38,5 @@ private:
 	AlignedVector<float> chroma_;
 	std::vector<float> chrSum_;
 
-	HarmonicPercussive operator=(const HarmonicPercussive&) = delete;
+	const HarmonicPercussive& operator=(const HarmonicPercussive&) = delete;
 };

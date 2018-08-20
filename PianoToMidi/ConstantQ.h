@@ -18,9 +18,9 @@ public:
 	void TrimSilence(float aMin = 1e-10f, float topDb = 60.f);
 	void Power2db(float ref = 1.f, float aMin = 1e-10f, float topDb = 80.f);
 
-	const AlignedVector<float>& GetCQT() const { return cqt_; }
 #pragma warning(push)
 #pragma warning(disable:4514) // Unreferenced inline function has been removed
+	const AlignedVector<float>& GetCQT() const { return cqt_; }
 	size_t GetNumBins() const { return nBins_; }
 
 	int GetBinsPerOctave() const { return octave_; }
@@ -54,5 +54,5 @@ private:
 	AlignedVector<float> cqt_;
 
 	ConstantQ(const ConstantQ&) = delete;
-	ConstantQ operator=(const ConstantQ&) = delete;
+	const ConstantQ& operator=(const ConstantQ&) = delete;
 };
