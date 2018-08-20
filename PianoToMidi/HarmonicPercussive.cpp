@@ -167,8 +167,10 @@ void HarmonicPercussive::OnsetEnvelope(const size_t lag, const int maxSize,
 	{
 	case AGGREGATE::MEAN:	AggrFunc = [](const Ipp32f*pSrc, int len, Ipp32f* pMin)
 		{ return ippsMean_32f(pSrc, len, pMin, ippAlgHintFast); };	break;
-	case AGGREGATE::MIN:	AggrFunc = &ippsMin_32f;				break;
-	case AGGREGATE::MAX:	AggrFunc = &ippsMax_32f;				break;
+	case AGGREGATE::MIN:	AggrFunc = [](const Ipp32f*pSrc, int len, Ipp32f* pMin)
+		{ return ippsMin_32f(pSrc, len, pMin); };					break;
+	case AGGREGATE::MAX:	AggrFunc = [](const Ipp32f*pSrc, int len, Ipp32f* pMin)
+		{ return ippsMax_32f(pSrc, len, pMin); };					break;
 	case AGGREGATE::MEDIAN:
 	{
 		vector<double> percEnvDouble(percEnv_.size()),
@@ -407,9 +409,12 @@ void HarmonicPercussive::Chromagram(const bool baseC, const NORM_TYPE norm,
 	switch (norm)
 	{
 	case NORM_TYPE::NONE:	NormFunc = nullptr;				break;
-	case NORM_TYPE::L1:		NormFunc = &ippsNorm_L1_32f;	break;
-	case NORM_TYPE::L2:		NormFunc = &ippsNorm_L2_32f;	break;
-	case NORM_TYPE::INF:	NormFunc = &ippsNorm_Inf_32f;	break;
+	case NORM_TYPE::L1:		NormFunc = [](const Ipp32f* src, int len, Ipp32f* normVal)
+		{ return ippsNorm_L1_32f(src, len, normVal); };		break;
+	case NORM_TYPE::L2:		NormFunc = [](const Ipp32f* src, int len, Ipp32f* normVal)
+		{ return ippsNorm_L2_32f(src, len, normVal); };		break;
+	case NORM_TYPE::INF:	NormFunc = [](const Ipp32f* src, int len, Ipp32f* normVal)
+		{ return ippsNorm_Inf_32f(src, len, normVal); };	break;
 	default: assert(!"Not all normalization types checked"); NormFunc = nullptr;
 	}
 

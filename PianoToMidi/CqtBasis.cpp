@@ -74,12 +74,15 @@ void CqtBasis::CalcFilters(const int rate, const float fMin,
 	assert(nFft_ == static_cast<size_t>(fft.getSize()) &&
 		"Mistake in rounding to the nearest integral power of 2");
 
-	IppStatus(*WinFunc)(Ipp32fc* srcDst, int len);
+	IppStatus (*WinFunc)(Ipp32fc* srcDst, int len);
 	switch (window_)
 	{
-	case ConstantQ::CQT_WINDOW::RECT:		WinFunc = [](Ipp32fc*, int) { return ippStsNoErr; };	break;
-	case ConstantQ::CQT_WINDOW::HANN:		WinFunc = &ippsWinHann_32fc_I;							break;
-	case ConstantQ::CQT_WINDOW::HAMMING:	WinFunc = &ippsWinHamming_32fc_I;						break;
+	case ConstantQ::CQT_WINDOW::RECT:
+		WinFunc = [](Ipp32fc*, int) { return ippStsNoErr; };										break;
+	case ConstantQ::CQT_WINDOW::HANN:
+		WinFunc = [](Ipp32fc* srcDst, int len) { return ippsWinHann_32fc_I		(srcDst, len); };	break;
+	case ConstantQ::CQT_WINDOW::HAMMING:
+		WinFunc = [](Ipp32fc* srcDst, int len) { return ippsWinHamming_32fc_I	(srcDst, len); };	break;
 	default: assert(!"Not all CQT windowing functions checked"); WinFunc = nullptr;
 	}
 
@@ -108,8 +111,10 @@ void CqtBasis::CalcFilters(const int rate, const float fMin,
 		return status;
 	};
 							break;
-	case NORM_TYPE::INF:	NormFunc = &ippsNorm_Inf_32fc32f;
-							break;
+	case NORM_TYPE::INF:	NormFunc = [](const Ipp32fc* src, int len, Ipp32f* normVal)
+	{
+		return ippsNorm_Inf_32fc32f(src, len, normVal);
+	};						break;
 	default: assert(!"Not all normalization types checked"); NormFunc = nullptr;
 	}
 

@@ -109,8 +109,8 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 	for (size_t i(0); i < cqtResp_.size(); ++i) unusedIter = copy(cqtResp_.at(i).cbegin(),
 		cqtResp_.at(i).cend(), cqt_.begin() + static_cast<ptrdiff_t>(i * cqtResp_.at(i).size()));
 
-	MKL_Simatcopy('R', 'T', nBins, cqtResp_.front().size(), 1, cqt_.data(),
-		max(1ull, cqtResp_.front().size()), max(1ull, nBins));
+	MKL_Simatcopy('R', 'T', nBins, cqtResp_.front().size(),
+		1, cqt_.data(), cqtResp_.front().size(), nBins);
 
 	stft_.reset(); // do not have to do it here, but will not need it anymore,
 	// so we can release it, because it is not const, and it is "unique" pointer

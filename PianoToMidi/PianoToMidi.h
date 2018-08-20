@@ -1,0 +1,32 @@
+#pragma once
+#include "FFmpegError.h"
+#include "CqtError.h"
+#include "KerasError.h"
+#include "MidiOutError.h"
+
+class PianoToMidi
+{
+	static constexpr auto nBins = 4, nFrames = 7;
+	static constexpr auto kerasModel = "KerasModel Dixon61 Frame54.json";
+public:
+	PianoToMidi();
+	~PianoToMidi();
+
+	std::string FFmpegDecode(const char* fileName) const;
+
+	std::string CqtTotal() const;
+	std::string HarmPerc() const;
+	
+	std::string KerasLoad() const;
+	int CnnProbabs() const;
+
+	std::string Gamma() const;
+	std::string KeySignature() const;
+
+	void WriteMidi(const char* fileName) const;
+private:
+	const std::unique_ptr<struct PianoData> data_;
+
+	PianoToMidi(const PianoToMidi&) = delete;
+	const PianoToMidi& operator=(const PianoToMidi&) = delete;
+};

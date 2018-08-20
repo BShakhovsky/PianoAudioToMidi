@@ -105,6 +105,7 @@
       <EnablePREfast>true</EnablePREfast>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(FFmpeg);$(Juce);$(Boost);$(Fdeep);$(Fplus);$(Eigen);$(NLohmann);C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2018.3.210\windows\mkl\include;C:\Program Files (x86)\Visual Leak Detector\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -147,6 +148,7 @@
       <EnablePREfast>true</EnablePREfast>
       <AdditionalIncludeDirectories>$(FFmpeg);$(Juce);$(Boost);$(Fdeep);$(Fplus);$(Eigen);$(NLohmann);C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2018.3.210\windows\mkl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -193,6 +195,8 @@
     <ClInclude Include="IntelCheckStatus.h" />
     <ClInclude Include="KerasCnn.h" />
     <ClInclude Include="KerasError.h" />
+    <ClInclude Include="MidiOutError.h" />
+    <ClInclude Include="PianoToMidi.h" />
     <ClInclude Include="ShortTimeFourier.h" />
     <ClInclude Include="Frame.h" />
     <ClInclude Include="Packet.h" />
@@ -209,6 +213,7 @@
     <ClCompile Include="FFmpegError.cpp" />
     <ClCompile Include="HarmonicPercussive.cpp" />
     <ClCompile Include="KerasCnn.cpp" />
+    <ClCompile Include="PianoToMidi.cpp" />
     <ClCompile Include="ShortTimeFourier.cpp" />
     <ClCompile Include="MonoResampler.cpp" />
     <ClCompile Include="IntelCheckStatus.cpp" />

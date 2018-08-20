@@ -11,10 +11,12 @@ struct KerasData
 	string log;
 
 	KerasData() = default;
+	~KerasData();
 private:
 	KerasData(const KerasData&) = delete;
 	const KerasData& operator=(const KerasData&) = delete;
 };
+KerasData::~KerasData() {} // 4710 Function not inlined
 
 KerasCnn::KerasCnn(const string& fileName)
 	: data_(make_unique<KerasData>())
@@ -33,6 +35,7 @@ KerasCnn::KerasCnn(const string& fileName)
 	catch (const runtime_error& e) { throw KerasError(e.what()); }
 }
 
+#pragma warning(suppress:4710 4711) // Function selected for automatic inline expansion and not inlined :)
 KerasCnn::~KerasCnn() {}
 
 const string& KerasCnn::GetLog() const { return data_->log; }

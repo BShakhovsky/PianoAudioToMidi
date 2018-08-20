@@ -87,6 +87,12 @@
     <ClInclude Include="KerasError.h">
       <Filter>Header Files\Keras CNN</Filter>
     </ClInclude>
+    <ClInclude Include="PianoToMidi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MidiOutError.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -121,6 +127,9 @@
     </ClCompile>
     <ClCompile Include="KerasCnn.cpp">
       <Filter>Source Files\Keras CNN</Filter>
+    </ClCompile>
+    <ClCompile Include="PianoToMidi.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

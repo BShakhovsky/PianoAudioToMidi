@@ -53,8 +53,8 @@ void ShortTimeFourier::RealForward(const float* rawAudio, const size_t nSamples,
 			stft_.data() + i * nFreqs_), true);
 	}
 
-	MKL_Cimatcopy('R', 'T', nFrames_, nFreqs_, { 1, 0 }, reinterpret_cast<MKL_Complex8*>(
-		stft_.data()), max(1ull, nFreqs_), max(1ull, nFrames_));
+	MKL_Cimatcopy('R', 'T', nFrames_, nFreqs_, { 1, 0 },
+		reinterpret_cast<MKL_Complex8*>(stft_.data()), nFreqs_, nFrames_);
 }
 
 void ShortTimeFourier::PadCentered(const float* src, const size_t srcSize,

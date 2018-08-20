@@ -4,10 +4,8 @@ class SparseMatrix
 {
 public:
 	explicit SparseMatrix(MKL_Complex8* dense, int nRows, int nCols, size_t nNonZeros);
-#pragma warning(push)
-#pragma warning(disable:4514) // Unreferenced inline function has been removed
+#pragma warning(suppress:4514) // Unreferenced inline function has been removed
 	~SparseMatrix() { Destroy(); }
-#pragma warning(pop)
 
 	void Scale(Ipp32f scale);
 	void RowMajorMultiply(const MKL_Complex8* source, MKL_Complex8* dest, int nDestColumns) const;
