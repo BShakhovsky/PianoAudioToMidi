@@ -78,9 +78,6 @@
     <ClInclude Include="HarmonicPercussive.h">
       <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
-    <ClInclude Include="EnumTypes.h">
-      <Filter>Header Files\Spectrums</Filter>
-    </ClInclude>
     <ClInclude Include="KerasCnn.h">
       <Filter>Header Files\Keras CNN</Filter>
     </ClInclude>
@@ -92,6 +89,12 @@
     </ClInclude>
     <ClInclude Include="MidiOutError.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Tempogram.h">
+      <Filter>Header Files\Spectrums</Filter>
+    </ClInclude>
+    <ClInclude Include="EnumFuncs.h">
+      <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -130,6 +133,12 @@
     </ClCompile>
     <ClCompile Include="PianoToMidi.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Tempogram.cpp">
+      <Filter>Source Files\Spectrums</Filter>
+    </ClCompile>
+    <ClCompile Include="EnumFuncs.cpp">
+      <Filter>Source Files\Spectrums</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

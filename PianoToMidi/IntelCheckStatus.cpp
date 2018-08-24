@@ -27,7 +27,13 @@ void CheckIPPresult(const IppStatus status)
 
 	case ippStsIIROrderErr:			errMsg = "IIR filter order <= 0: ";						break;
 	case ippStsChannelErr:			errMsg = "IIR filter number of channels <= 0: ";		break;
-	case ippStsContextMatchErr:		errMsg = "Incorrect IIR filter state identifier: ";		break;
+	case ippStsContextMatchErr:		errMsg = "Incorrect identifier of "
+									"IIR filter state or DFT specification identifier: ";	break;
+
+	case ippStsMemAllocErr:			errMsg = "No memory allocated: ";						break;
+	case ippStsFftFlagErr:			errMsg = "Incorrect flag value: ";						break;
+	case ippStsFftOrderErr:			errMsg = "Memory to calculate the "
+												"DFT transform length exceeds the limit: ";	break;
 
 	case ippStsStepErr:				errMsg = "Step <= 0: ";									break;
 	case ippStsNotEvenStepErr:		errMsg = "One of the step values not divisible by 4 "

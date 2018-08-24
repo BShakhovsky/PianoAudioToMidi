@@ -11,7 +11,7 @@ public:
 	explicit ConstantQ(const std::shared_ptr<class AudioLoader>& audio,
 		size_t nBins = 88, int binsPerOctave = 12, float fMin = 27.5f, int hopLength = 512,
 		float filterScale = 1, NORM_TYPE norm = NORM_TYPE::L1, float sparsity = .01f,
-		CQT_WINDOW windowFunc = CQT_WINDOW::HANN, bool toScale = true, bool isPadReflect = true);
+		CQT_WINDOW windowFunc = CQT_WINDOW::HANN, bool toScale = true, PAD_MODE pad = PAD_MODE::MIRROR);
 	~ConstantQ();
 
 	void Amplitude2power();

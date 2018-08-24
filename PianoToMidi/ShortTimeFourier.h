@@ -4,7 +4,7 @@ class ShortTimeFourier
 {
 public:
 	explicit ShortTimeFourier(size_t frameLen = 2'048,
-		WIN_FUNC window = WIN_FUNC::HANN, bool isPadReflected = true) noexcept;
+		WIN_FUNC window = WIN_FUNC::HANN, PAD_MODE pad = PAD_MODE::MIRROR);
 	~ShortTimeFourier();
 
 	void RealForward(const float* rawAudio, size_t nSamples, int hopLen = 0);
@@ -14,19 +14,16 @@ public:
 	size_t GetNumFrames() const { return nFrames_; }
 #pragma warning(pop)
 private:
-	void PadCentered(const float* source, size_t srcSize,
-		AlignedVector<float>* dest, bool isModeReflect) const;
-	void GetStftWindow(WIN_FUNC window);
-
 	const size_t frameLen_;
-	const bool isPadReflect_;
-	const byte pad_[sizeof(intptr_t) - sizeof(bool)]{ 0 };
 	const std::unique_ptr<juce::dsp::FFT> fft_;
-	std::unique_ptr<juce::dsp::WindowingFunction<float>> window_;
+	std::shared_ptr<juce::dsp::WindowingFunction<float>> WinFunc_;
+	std::function<IppStatus(const Ipp32f* src, size_t srcSize, Ipp32f* dest, size_t padSize)> PadFunc_;
 
 	AlignedVector<std::complex<float>> stft_;
 	size_t nFrames_, nFreqs_;
-
+#ifdef NDEBUG
+	const byte padding_[4] = { 0 };
+#endif
 	ShortTimeFourier(const ShortTimeFourier&) = delete;
 	const ShortTimeFourier& operator=(const ShortTimeFourier&) = delete;
 };

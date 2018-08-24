@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #include "AlignedVector.h"
-#include "EnumTypes.h"
+#include "EnumFuncs.h"
 #include "ConstantQ.h"
 #include "CqtBasis.h"
 
@@ -16,7 +16,8 @@ using boost::alignment::is_aligned;
 
 CqtBasis::CqtBasis(const int octave, const float scale,
 	const NORM_TYPE norm, const ConstantQ::CQT_WINDOW window)
-	: octave_(octave), Q_(scale / (pow(2.f, 1.f / octave_) - 1)), norm_(norm), window_(window),
+	: octave_(octave), Q_(scale / (pow(2.f, 1.f / octave_) - 1)),
+	NormFunc_(GetNormFuncComplex(norm)), window_(window),
 	nFft_(0)
 {
 	assert(octave > 0 && "Bins per octave must be positive");
@@ -86,38 +87,6 @@ void CqtBasis::CalcFilters(const int rate, const float fMin,
 	default: assert(!"Not all CQT windowing functions checked"); WinFunc = nullptr;
 	}
 
-	IppStatus(*NormFunc)(const Ipp32fc* src, int len, Ipp32f* normVal);
-	switch (norm_)
-	{
-	case NORM_TYPE::NONE:	NormFunc = [](const Ipp32fc*, int, Ipp32f* normVal)
-	{
-		*normVal = 1;
-		return ippStsNoErr;
-	};
-							break;
-	case NORM_TYPE::L1:		NormFunc = [](const Ipp32fc* src, int len, Ipp32f* normVal)
-	{
-		Ipp64f norm64;
-		const auto status(ippsNorm_L1_32fc64f(src, len, &norm64));
-		*normVal = static_cast<Ipp32f>(norm64);
-		return status;
-	};
-							break;
-	case NORM_TYPE::L2:		NormFunc = [](const Ipp32fc* src, int len, Ipp32f* normVal)
-	{
-		Ipp64f norm64;
-		const auto status(ippsNorm_L2_32fc64f(src, len, &norm64));
-		*normVal = static_cast<Ipp32f>(norm64);
-		return status;
-	};
-							break;
-	case NORM_TYPE::INF:	NormFunc = [](const Ipp32fc* src, int len, Ipp32f* normVal)
-	{
-		return ippsNorm_Inf_32fc32f(src, len, normVal);
-	};						break;
-	default: assert(!"Not all normalization types checked"); NormFunc = nullptr;
-	}
-
 	for (size_t i(0); i < filts_.size(); ++i)
 	{
 		const auto offset((filts_.at(i).size() - static_cast<size_t>(lens_.at(i)) - 1) / 2);
@@ -133,10 +102,10 @@ void CqtBasis::CalcFilters(const int rate, const float fMin,
 		const auto size(static_cast<int>(ceil(lens_.at(i))));
 
 		// +1 if even to compensate for non-symmetry:
-		CHECK_IPP_RESULT(WinFunc(buff, size + 1 - static_cast<int>(lens_.at(i)) % 2));
+		if (WinFunc) CHECK_IPP_RESULT(WinFunc(buff, size + 1 - static_cast<int>(lens_.at(i)) % 2));
 		
 		Ipp32f norm32(0);
-		if (NormFunc) CHECK_IPP_RESULT(NormFunc(buff, size, &norm32));
+		if (NormFunc_) CHECK_IPP_RESULT(NormFunc_(buff, size, &norm32));
 		assert(norm32 && "Norm factor not calculated");
 		CHECK_IPP_RESULT(ippsMulC_32fc_I({ lens_.at(i) / nFft_ / norm32, 0 }, buff, size));
 

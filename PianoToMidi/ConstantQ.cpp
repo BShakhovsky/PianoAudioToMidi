@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #include "AlignedVector.h"
-#include "EnumTypes.h"
+#include "EnumFuncs.h"
 #include "ConstantQ.h"
 #include "AudioLoader.h"
 
@@ -24,7 +24,7 @@ int Num2factors(int x)
 
 ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nBins,
 	const int octave, const float fMin, const int hopLen, const float filtScale, const NORM_TYPE norm,
-	const float sparsity, const CQT_WINDOW window, const bool toScale, const bool isPadReflect)
+	const float sparsity, const CQT_WINDOW window, const bool toScale, const PAD_MODE pad)
 	: nBins_(nBins), fMin_(fMin), octave_(octave),
 	hopLen_(hopLen), hopLenReduced_(hopLen),
 	rateInitial_(audio->GetSampleRate()),
@@ -66,7 +66,7 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 		nFft = qBasis_->GetFftFrameLen();
 #endif
 		stft_ = make_unique<ShortTimeFourier>(
-			qBasis_->GetFftFrameLen(), WIN_FUNC::RECT, isPadReflect);
+			qBasis_->GetFftFrameLen(), WIN_FUNC::RECT, pad);
 		Response();
 
 		fMinOctave /= 2;
@@ -91,7 +91,7 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 		"STFT frame length has changed, but it should not");
 #endif
 	if (not stft_) stft_ = make_unique<ShortTimeFourier>(
-		qBasis_->GetFftFrameLen(), WIN_FUNC::RECT, isPadReflect);
+		qBasis_->GetFftFrameLen(), WIN_FUNC::RECT, pad);
 
 	for (int i(0); i < nOctaves; ++i)
 	{

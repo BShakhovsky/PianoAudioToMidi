@@ -16,6 +16,7 @@ public:
 
 	std::string CqtTotal() const;
 	std::string HarmPerc() const;
+	std::string Tempo() const;
 	
 	std::string KerasLoad() const;
 	int CnnProbabs() const;

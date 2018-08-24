@@ -25,7 +25,7 @@ private:
 
 	const int octave_;
 	const float Q_;
-	const NORM_TYPE norm_;
+	std::function<IppStatus(const Ipp32fc* src, int len, Ipp32f* normVal)> NormFunc_;
 	const ConstantQ::CQT_WINDOW window_;
 
 	std::vector<float> freqs_, lens_;
@@ -35,6 +35,8 @@ private:
 	size_t nFft_;
 
 	std::unique_ptr<class SparseMatrix> csr_;
+
+	const byte padding_[4] = { 0 };
 
 	CqtBasis(const CqtBasis&) = delete;
 	const CqtBasis& operator=(const CqtBasis&) = delete;

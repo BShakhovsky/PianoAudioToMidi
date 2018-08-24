@@ -3,20 +3,24 @@
 
 #include "AudioLoader.h"
 #include "AlignedVector.h"
-#include "EnumTypes.h"
+#include "EnumFuncs.h"
+
 #include "ConstantQ.h"
 #include "HarmonicPercussive.h"
+#include "Tempogram.h"
 #include "KerasCnn.h"
 
 using namespace std;
+using namespace juce;
 
 struct PianoData
 {
 	shared_ptr<AudioLoader> song;
 	shared_ptr<ConstantQ> cqt;
 
-	vector<float> cqtHarm;
-	vector<size_t> oPeaks;
+	shared_ptr<HarmonicPercussive> hpss;
+	vector<float> cqtHarmPadded;
+	float bpm;
 
 	unique_ptr<KerasCnn> cnn;
 	vector<vector<float>> probabs;
@@ -26,13 +30,50 @@ struct PianoData
 	vector<string> gamma;
 	string keySign;
 
-	PianoData() : index(0) {}
+	PianoData() : bpm(0), index(0) {}
 	~PianoData();
+
+	MidiMessage GetKeySignEvent() const;
 private:
 	PianoData(const PianoData&) = delete;
 	const PianoData& operator=(const PianoData&) = delete;
 };
 PianoData::~PianoData() {} // 4710 Function not inlined
+MidiMessage PianoData::GetKeySignEvent() const
+{
+	if (keySign == "C" or keySign == "Am")
+		return MidiMessage::keySignatureMetaEvent(0, keySign.back() == 'm');
+	else if (keySign == "G" or keySign == "Dm")
+		return MidiMessage::keySignatureMetaEvent(1, keySign.back() == 'm');
+	else if (keySign == "D" or keySign == "Bm")
+		return MidiMessage::keySignatureMetaEvent(2, keySign.back() == 'm');
+	else if (keySign == "A" or keySign == "F#m")
+		return MidiMessage::keySignatureMetaEvent(3, keySign.back() == 'm');
+	else if (keySign == "E" or keySign == "C#m")
+		return MidiMessage::keySignatureMetaEvent(4, keySign.back() == 'm');
+	else if (keySign == "B" or keySign == "Abm")
+		return MidiMessage::keySignatureMetaEvent(5, keySign.back() == 'm');
+
+	else if (keySign == "F#" or keySign == "Ebm")
+		return MidiMessage::keySignatureMetaEvent(6, keySign.back() == 'm');
+
+	else if (keySign == "C#" or keySign == "Bbm")
+		return MidiMessage::keySignatureMetaEvent(-5, keySign.back() == 'm');
+	else if (keySign == "Ab" or keySign == "Fm")
+		return MidiMessage::keySignatureMetaEvent(-4, keySign.back() == 'm');
+	else if (keySign == "Eb" or keySign == "Cm")
+		return MidiMessage::keySignatureMetaEvent(-3, keySign.back() == 'm');
+	else if (keySign == "Bb" or keySign == "Gm")
+		return MidiMessage::keySignatureMetaEvent(-2, keySign.back() == 'm');
+	else if (keySign == "F" or keySign == "Dm")
+		return MidiMessage::keySignatureMetaEvent(-1, keySign.back() == 'm');
+
+	else
+	{
+		assert("Not all key signatures checked");
+		return MidiMessage::keySignatureMetaEvent(0, false);
+	}
+}
 
 PianoToMidi::PianoToMidi() : data_(make_unique<PianoData>()) {}
 PianoToMidi::~PianoToMidi() {}
@@ -80,41 +121,65 @@ string PianoToMidi::CqtTotal() const
 string PianoToMidi::HarmPerc() const
 {
 	assert(data_->cqt and "CqtTotal should be called before HarmPerc");
-	assert(data_->cqtHarm.empty() and "HarmPerc called twice");
+	assert(not data_->hpss and "HarmPerc called twice");
 	assert(data_->keySign.empty() and "Either HarmPerc called twice, or order is wrong");
 
-	HarmonicPercussive hpss(data_->cqt);
-	data_->cqtHarm.assign(hpss.GetHarmonic().size() + (nFrames / 2 * 2) * data_->cqt->GetNumBins(), 0);
-	const auto unusedIterFloat(copy(hpss.GetHarmonic().cbegin(), hpss.GetHarmonic().cend(),
-		data_->cqtHarm.begin() + (nFrames / 2) * static_cast<ptrdiff_t>(data_->cqt->GetNumBins())));
+	data_->hpss = make_shared<HarmonicPercussive>(data_->cqt);
+	data_->cqtHarmPadded.assign(data_->hpss->GetHarmonic().size()
+		+ (nFrames / 2 * 2) * data_->cqt->GetNumBins(), 0);
+	const auto unusedIterFloat(copy(data_->hpss->GetHarmonic().cbegin(),
+		data_->hpss->GetHarmonic().cend(), data_->cqtHarmPadded.begin()
+		+ (nFrames / 2) * static_cast<ptrdiff_t>(data_->cqt->GetNumBins())));
 
-	hpss.OnsetEnvelope();
-	hpss.OnsetPeaksDetect();
-	data_->oPeaks = hpss.GetOnsetPeaks();
+	data_->hpss->OnsetEnvelope();
+	data_->hpss->OnsetPeaksDetect();
 
-	hpss.Chromagram(false);
-	hpss.ChromaSum();
+	data_->hpss->Chromagram(false);
+	data_->hpss->ChromaSum();
 
-	data_->keySign = hpss.KeySignature();
+	data_->keySign = data_->hpss->KeySignature();
 	ostringstream os;
 	os << "Key signature:\tmaybe " << data_->keySign;
+	return move(os.str());
+}
+string PianoToMidi::Tempo() const
+{
+	assert(data_->hpss and not data_->cqtHarmPadded.empty() and not data_->keySign.empty()
+		and "HarmPerc should be called before Tempo");
+	assert(data_->bpm == 0 and "Tempo called twice");
+
+	Tempogram tempo;
+//	data_->bpm = 0;
+	data_->bpm = tempo.MostProbableTempo(data_->hpss->GetOnsetEnvelope(),
+		data_->cqt->GetSampleRate(), data_->cqt->GetHopLength());
+
+	ostringstream os;
+	os << "Average tempo:\t";
+	if (data_->bpm) os << round(data_->bpm);
+	else
+	{
+		os << "don't know, audio is too short";
+//		data_->bpm = 120;
+	}
 	return move(os.str());
 }
 
 string PianoToMidi::KerasLoad() const
 {
-	assert(not data_->cqtHarm.empty() and not data_->keySign.empty()
+	assert(data_->hpss and not data_->keySign.empty()
 		and "HarmPerc should be called before KerasLoad");
+//	assert(data_->bpm and "Tempo should be called before KerasLoad");
 	assert(not data_->cnn and "KerasLoad called twice");
 
-	assert(data_->cqtHarm.size() % data_->cqt->GetNumBins() == 0
+	assert(data_->cqtHarmPadded.size() % data_->cqt->GetNumBins() == 0
 		and "Harmonic spectrum is not rectangular");
-	assert(data_->cqtHarm.size() / data_->cqt->GetNumBins() >= nFrames
+	assert(data_->cqtHarmPadded.size() / data_->cqt->GetNumBins() >= nFrames
 		and "Padded spectrum must contain at least nFrames time frames");
 
 	data_->cnn = make_unique<KerasCnn>(kerasModel);
-	data_->probabs.resize(data_->cqtHarm.size() / data_->cqt->GetNumBins() + 1 - nFrames);
-	assert(data_->probabs.size() >= data_->oPeaks.back() and "Input and output durations do not match");
+	data_->probabs.resize(data_->cqtHarmPadded.size() / data_->cqt->GetNumBins() + 1 - nFrames);
+	assert(data_->probabs.size() >= data_->hpss->GetOnsetPeaks().back()
+		and "Input and output durations do not match");
 //	data_->index = 0;
 
 	return move(data_->cnn->GetLog());
@@ -136,9 +201,10 @@ int PianoToMidi::CnnProbabs() const
 	if (data_->index < data_->probabs.size())
 	{
 		data_->probabs.at(data_->index) = data_->cnn->Predict2D(
-			data_->cqtHarm.data() + static_cast<ptrdiff_t>(data_->index
+			data_->cqtHarmPadded.data() + static_cast<ptrdiff_t>(data_->index
 				* data_->cqt->GetNumBins()), nFrames, data_->cqt->GetNumBins());
-		return static_cast<int>(100. * data_->index++ * data_->cqt->GetNumBins() / data_->cqtHarm.size());
+		return static_cast<int>(100. * data_->index++
+			* data_->cqt->GetNumBins() / data_->cqtHarmPadded.size());
 	}
 	++data_->index;
 	return 100;
@@ -153,26 +219,29 @@ string PianoToMidi::Gamma() const
 		throw KerasError("CnnProbabs called wrong number of times");
 	assert(data_->notes.empty() and data_->gamma.empty() and "Gamma called twice");
 
-	vector<vector<float>> result(data_->oPeaks.size(), vector<float>(data_->probabs.front().size()));
+	vector<vector<float>> result(data_->hpss->GetOnsetPeaks().size(),
+		vector<float>(data_->probabs.front().size()));
 	for (size_t i(0); i < result.front().size(); ++i)
 	{
 		result.front().at(i) = max_element(data_->probabs.cbegin(),
 			result.size() == 1 ? data_->probabs.cend() : (data_->probabs.cbegin()
-				+ static_cast<ptrdiff_t>(data_->oPeaks.front() + data_->oPeaks.at(1)) / 2),
+				+ static_cast<ptrdiff_t>(data_->hpss->GetOnsetPeaks().front()
+					+ data_->hpss->GetOnsetPeaks().at(1)) / 2),
 			[i](const vector<float>& lhs, const vector<float>& rhs)
 		{ return lhs.at(i) < rhs.at(i); })->at(i);
 		if (result.size() > 1)
 		{
 			result.back().at(i) = max_element(data_->probabs.cbegin() + static_cast<ptrdiff_t>(
-				*(data_->oPeaks.cend() - 2) + data_->oPeaks.back()) / 2, data_->probabs.cend(),
+				*(data_->hpss->GetOnsetPeaks().cend() - 2)
+				+ data_->hpss->GetOnsetPeaks().back()) / 2, data_->probabs.cend(),
 				[i](const vector<float>& lhs, const vector<float>& rhs)
 			{ return lhs.at(i) < rhs.at(i); })->at(i);
 
 			for (size_t j(1); j < result.size() - 1; ++j) result.at(j).at(i) = max_element(
 				data_->probabs.cbegin() + static_cast<ptrdiff_t>(
-					data_->oPeaks.at(j - 1) + data_->oPeaks.at(j)) / 2,
+					data_->hpss->GetOnsetPeaks().at(j - 1) + data_->hpss->GetOnsetPeaks().at(j)) / 2,
 				data_->probabs.cbegin() + static_cast<ptrdiff_t>(
-					data_->oPeaks.at(j) + data_->oPeaks.at(j + 1)) / 2,
+					data_->hpss->GetOnsetPeaks().at(j) + data_->hpss->GetOnsetPeaks().at(j + 1)) / 2,
 				[i](const vector<float>& lhs, const vector<float>& rhs)
 			{ return lhs.at(i) < rhs.at(i); })->at(i);
 		}
@@ -299,10 +368,10 @@ string PianoToMidi::KeySignature() const
 void PianoToMidi::WriteMidi(const char* midiFile) const
 {
 	using boost::filesystem::exists;
-	using namespace juce;
 
 	assert(not data_->notes.empty() and "Gamma should be called before WriteMidi");
-	assert(data_->notes.size() == data_->oPeaks.size() and "Wrong number of note onsets");
+	assert(data_->notes.size() == data_->hpss->GetOnsetPeaks().size()
+		and "Wrong number of note onsets");
 
 	const auto outputFile(File::getCurrentWorkingDirectory().getChildFile(String(midiFile)));
 	if (exists(outputFile.getFullPathName().toStdString()) and not outputFile.deleteFile())
@@ -314,51 +383,20 @@ void PianoToMidi::WriteMidi(const char* midiFile) const
 	MidiMessageSequence track;
 	track.addEvent(MidiMessage::textMetaEvent(1, "Automatically transcribed from audio"));
 	track.addEvent(MidiMessage::textMetaEvent(2, "Used software created by Boris Shakhovsky"));
-
-	if (data_->keySign == "C" or data_->keySign == "Am")
-		track.addEvent(MidiMessage::keySignatureMetaEvent(0, data_->keySign.back() == 'm'));
-	else if (data_->keySign == "G" or data_->keySign == "Dm")
-		track.addEvent(MidiMessage::keySignatureMetaEvent(1, data_->keySign.back() == 'm'));
-	else if (data_->keySign == "D" or data_->keySign == "Bm")
-		track.addEvent(MidiMessage::keySignatureMetaEvent(2, data_->keySign.back() == 'm'));
-	else if (data_->keySign == "A" or data_->keySign == "F#m")
-		track.addEvent(MidiMessage::keySignatureMetaEvent(3, data_->keySign.back() == 'm'));
-	else if (data_->keySign == "E" or data_->keySign == "C#m")
-		track.addEvent(MidiMessage::keySignatureMetaEvent(4, data_->keySign.back() == 'm'));
-	else if (data_->keySign == "B" or data_->keySign == "Abm")
-		track.addEvent(MidiMessage::keySignatureMetaEvent(5, data_->keySign.back() == 'm'));
-
-	else if (data_->keySign == "F#" or data_->keySign == "Ebm")
-		track.addEvent(MidiMessage::keySignatureMetaEvent(6, data_->keySign.back() == 'm'));
-
-	else if (data_->keySign == "C#" or data_->keySign == "Bbm")
-		track.addEvent(MidiMessage::keySignatureMetaEvent(-5, data_->keySign.back() == 'm'));
-	else if (data_->keySign == "Ab" or data_->keySign == "Fm")
-		track.addEvent(MidiMessage::keySignatureMetaEvent(-4, data_->keySign.back() == 'm'));
-	else if (data_->keySign == "Eb" or data_->keySign == "Cm")
-		track.addEvent(MidiMessage::keySignatureMetaEvent(-3, data_->keySign.back() == 'm'));
-	else if (data_->keySign == "Bb" or data_->keySign == "Gm")
-		track.addEvent(MidiMessage::keySignatureMetaEvent(-2, data_->keySign.back() == 'm'));
-	else if (data_->keySign == "F" or data_->keySign == "Dm")
-		track.addEvent(MidiMessage::keySignatureMetaEvent(-1, data_->keySign.back() == 'm'));
-
-	else assert("Not all key signatures checked");
-
+	track.addEvent(data_->GetKeySignEvent());
 
 	MidiFile midi;
 	constexpr auto ppqn(480);
 	midi.setTicksPerQuarterNote(ppqn);
-
-	//	microSecPerBeat = mido.bpm2tempo(lbr.beat.tempo(song).mean());
-	constexpr auto tempo(120);
-	const auto tempoEvent(MidiMessage::tempoMetaEvent(1'000'000 * 60 / tempo));
+	const auto tempoEvent(MidiMessage::tempoMetaEvent(
+		static_cast<int>(round(1'000'000 * 60 / data_->bpm))));
 
 	for (const auto& note : data_->notes.back())
 		track.addEvent(MidiMessage::noteOn(1, static_cast<int>(note.first) + 21, note.second));
 	for (size_t i(data_->notes.size() - 1); i > 0; --i)
 	{
 		track.addTimeToMessages(static_cast<double>(
-			data_->oPeaks.at(i) - data_->oPeaks.at(i - 1)) // delta frame
+			data_->hpss->GetOnsetPeaks().at(i) - data_->hpss->GetOnsetPeaks().at(i - 1)) // delta frame
 			* data_->cqt->GetHopLength() / data_->cqt->GetSampleRate() // delta frame to delta seconds
 			// multiply by pulses per seconds (ppqn * tempo / 60):
 			/ tempoEvent.getTempoMetaEventTickLength(midi.getTimeFormat()));

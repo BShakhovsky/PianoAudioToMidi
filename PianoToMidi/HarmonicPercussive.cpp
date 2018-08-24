@@ -1,7 +1,7 @@
 ﻿#include "stdafx.h"
 
 #include "AlignedVector.h"
-#include "EnumTypes.h"
+#include "EnumFuncs.h"
 #include "ConstantQ.h"
 #include "HarmonicPercussive.h"
 
@@ -159,47 +159,13 @@ void HarmonicPercussive::OnsetEnvelope(const size_t lag, const int maxSize,
 	CHECK_IPP_RESULT(ippsThreshold_LT_32f_I(percDiff.data(),
 		static_cast<int>(percDiff.size()), 0)); // Discard negatives (decreasing amplitude)
 
-	vector<float>::iterator unusedIter;
 	percEnv_.resize(percDiff.size() / cqt_->GetNumBins());
-	IppStatus (*AggrFunc)(const Ipp32f* src, int len, Ipp32f* resMeanMinMax);
-	AggrFunc = nullptr;
-	switch (aggr) // combining onsets at different frequency bins:
-	{
-	case AGGREGATE::MEAN:	AggrFunc = [](const Ipp32f*pSrc, int len, Ipp32f* pMin)
-		{ return ippsMean_32f(pSrc, len, pMin, ippAlgHintFast); };	break;
-	case AGGREGATE::MIN:	AggrFunc = [](const Ipp32f*pSrc, int len, Ipp32f* pMin)
-		{ return ippsMin_32f(pSrc, len, pMin); };					break;
-	case AGGREGATE::MAX:	AggrFunc = [](const Ipp32f*pSrc, int len, Ipp32f* pMin)
-		{ return ippsMax_32f(pSrc, len, pMin); };					break;
-	case AGGREGATE::MEDIAN:
-	{
-		vector<double> percEnvDouble(percEnv_.size()),
-			percDiffDouble(percDiff.cbegin(), percDiff.cend());
+	Aggregate(percDiff.data(), static_cast<int>(percEnv_.size()), static_cast<int>(lag),
+		static_cast<int>(cqt_->GetNumBins()), percEnv_.data(), aggr);
 
-		Ipp32u buffSize;
-		CHECK_IPP_RESULT(ippiFilterMedianGetBufferSize_64f({ 1,
-			static_cast<int>(percEnvDouble.size()) }, { static_cast<int>(cqt_->GetNumBins()
-				+ cqt_->GetNumBins() % 2 - 1), 1 }, 1, &buffSize));
-		vector<Ipp8u> buff(buffSize);
-
-		CHECK_IPP_RESULT(ippiFilterMedian_64f_C1R(percDiffDouble.data(),
-			static_cast<int>(cqt_->GetNumBins() * sizeof percDiffDouble.front()),
-			percEnvDouble.data(), static_cast<int>(sizeof percEnvDouble.front()), { 1,
-			static_cast<int>(percEnvDouble.size()) }, { static_cast<int>(cqt_->GetNumBins()
-				+ cqt_->GetNumBins() % 2 - 1), 1 }, { 0, 0 }, buff.data()));
-
-		unusedIter = transform(percEnvDouble.cbegin(), percEnvDouble.cend(),
-			percEnv_.begin(), [](double val) { return static_cast<float>(val); });
-	} break;
-	default: assert(!"Not all aggregating functions checked");
-	}
-	if (AggrFunc) for (size_t i(lag); i < percEnv_.size(); ++i) CHECK_IPP_RESULT(
-		AggrFunc(percDiff.data() + static_cast<ptrdiff_t>(i * cqt_->GetNumBins()),
-			static_cast<int>(cqt_->GetNumBins()), &percEnv_.at(i)));
-
-	unusedIter = percEnv_.insert(percEnv_.begin(), lag // compensate for lag
+	const auto unusedIter(percEnv_.insert(percEnv_.begin(), lag // compensate for lag
 		+ (toCenter ? // Shift to counter-act framing effects:
-			cqt_->GetFftFrameLength() / 2 / cqt_->GetHopLength() : 0), 0);
+			cqt_->GetFftFrameLength() / 2 / cqt_->GetHopLength() : 0), 0));
 
 	if (toDetrend)	// Remove the DC component by Direct Infinite Impulse Response (IIR) filter
 	{				// (transposed implementation of standard difference equation)
@@ -359,22 +325,8 @@ void HarmonicPercussive::Chromagram(const bool baseC, const NORM_TYPE norm,
 
 	if (window != WIN_FUNC::RECT)
 	{
-		WindowingFunction<float>::WindowingMethod winMethod;
-		switch (window)
-		{
-		case WIN_FUNC::RECT:			winMethod = WindowingFunction<float>::rectangular;		break;
-		case WIN_FUNC::HANN:			winMethod = WindowingFunction<float>::hann;				break;
-		case WIN_FUNC::HAMMING:			winMethod = WindowingFunction<float>::hamming;			break;
-		case WIN_FUNC::BLACKMAN:		winMethod = WindowingFunction<float>::blackman;			break;
-		case WIN_FUNC::BLACKMAN_HARRIS:	winMethod = WindowingFunction<float>::blackmanHarris;	break;
-		case WIN_FUNC::FLAT_TOP:		winMethod = WindowingFunction<float>::flatTop;			break;
-		case WIN_FUNC::KAISER:			winMethod = WindowingFunction<float>::kaiser;			break;
-		case WIN_FUNC::TRIAG:			winMethod = WindowingFunction<float>::triangular;		break;
-		default:						assert(!"Not all windowing functions checked");
-										winMethod = WindowingFunction<float>::numWindowingMethods;
-		}
-		WindowingFunction<float> winFunc(cq2Ch.front().size(), winMethod, false);
-		for (auto& row : cq2Ch) winFunc.multiplyWithWindowingTable(row.data(), row.size());
+		auto winFunc(GetWindowFunc(window, cq2Ch.front().size()));
+		for (auto& row : cq2Ch) winFunc->multiplyWithWindowingTable(row.data(), row.size());
 	}
 
 	AlignedVector<float> cq2ChFlat(cq2Ch.size() * cq2Ch.front().size());
@@ -405,19 +357,7 @@ void HarmonicPercussive::Chromagram(const bool baseC, const NORM_TYPE norm,
 		chroma_.data(), static_cast<int>(chroma_.size()), threshold, 0));
 
 	if (norm == NORM_TYPE::NONE) return;
-	IppStatus(*NormFunc)(const Ipp32f* src, int len, Ipp32f* normVal);
-	switch (norm)
-	{
-	case NORM_TYPE::NONE:	NormFunc = nullptr;				break;
-	case NORM_TYPE::L1:		NormFunc = [](const Ipp32f* src, int len, Ipp32f* normVal)
-		{ return ippsNorm_L1_32f(src, len, normVal); };		break;
-	case NORM_TYPE::L2:		NormFunc = [](const Ipp32f* src, int len, Ipp32f* normVal)
-		{ return ippsNorm_L2_32f(src, len, normVal); };		break;
-	case NORM_TYPE::INF:	NormFunc = [](const Ipp32f* src, int len, Ipp32f* normVal)
-		{ return ippsNorm_Inf_32f(src, len, normVal); };	break;
-	default: assert(!"Not all normalization types checked"); NormFunc = nullptr;
-	}
-
+	const auto NormFunc(GetNormFuncReal(norm));
 	MKL_Simatcopy('R', 'T', nChroma, chroma_.size() / nChroma,
 		1, chroma_.data(), chroma_.size() / nChroma, nChroma);
 	for (size_t i(0); i < chroma_.size() / nChroma; ++i)
