@@ -13,6 +13,30 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\Main Window">
+      <UniqueIdentifier>{017da7d4-5fc2-432d-9a8f-8bf53d2f53a4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Main Window">
+      <UniqueIdentifier>{bd2153a5-338d-4b8f-9564-25d3beb77aef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Dialogs">
+      <UniqueIdentifier>{21262162-8145-4269-82d9-92db42c9cb4b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Dialogs">
+      <UniqueIdentifier>{bb60d405-3eb3-4fce-a466-cd33f92f0c03}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Main">
+      <UniqueIdentifier>{9ac1a794-be01-4343-a4e6-dee8edcb7962}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Main">
+      <UniqueIdentifier>{cc439e27-9d4a-40fe-b130-f1e788d137a0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Smart Pointers">
+      <UniqueIdentifier>{1d503f8c-a5ac-45d5-8db6-ed430b56651e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Smart Pointers">
+      <UniqueIdentifier>{54fffcb1-48f1-49ea-a79a-5fa13f5eac12}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -21,13 +45,65 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="MainWindow.h">
+      <Filter>Header Files\Main Window</Filter>
+    </ClInclude>
+    <ClInclude Include="About.h">
+      <Filter>Header Files\Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>Header Files\Main</Filter>
+    </ClInclude>
+    <ClInclude Include="TestRun.h">
+      <Filter>Header Files\Main</Filter>
+    </ClInclude>
+    <ClInclude Include="Spectrogram.h">
+      <Filter>Header Files\Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="CanvasGdi.h">
+      <Filter>Header Files\Smart Pointers</Filter>
+    </ClInclude>
+    <ClInclude Include="CursorWait.h">
+      <Filter>Header Files\Smart Pointers</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceCompatible.h">
+      <Filter>Header Files\Smart Pointers</Filter>
+    </ClInclude>
+    <ClInclude Include="BitmapCompatible.h">
+      <Filter>Header Files\Smart Pointers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TestRun.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="MainWindow.cpp">
+      <Filter>Source Files\Main Window</Filter>
     </ClCompile>
+    <ClCompile Include="About.cpp">
+      <Filter>Source Files\Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="TestRun.cpp">
+      <Filter>Source Files\Main</Filter>
+    </ClCompile>
+    <ClCompile Include="Spectrogram.cpp">
+      <Filter>Source Files\Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="BitmapCompatible.cpp">
+      <Filter>Source Files\Smart Pointers</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="TestRun.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="small.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Large.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>

@@ -15,11 +15,14 @@ public:
 	std::string FFmpegDecode(const char* fileName) const;
 
 	std::string CqtTotal() const;
+	std::vector<float> GetCqt() const;
+	size_t GetMidiSeconds() const;
+
 	std::string HarmPerc() const;
 	std::string Tempo() const;
 	
-	std::string KerasLoad() const;
-	int CnnProbabs() const;
+	std::string KerasLoad(const std::string& currExePath) const;
+	WPARAM CnnProbabs() const;
 
 	std::string Gamma() const;
 	std::string KeySignature() const;

@@ -86,7 +86,7 @@ string PianoToMidi::FFmpegDecode(const char* mediaFile) const
 	ostringstream os;
 	os << "Format:\t\t" << data_->song->GetFormatName() << endl
 		<< "Audio Codec:\t" << data_->song->GetCodecName() << endl
-		<< "Bit_rate:\t" << data_->song->GetBitRate() << endl;
+		<< "Bit_rate:\t\t" << data_->song->GetBitRate() << endl;
 
 	data_->song->Decode();
 //	os << "Duration:\t" << data_->song->GetNumSeconds() / 60 << " min : "
@@ -111,13 +111,22 @@ string PianoToMidi::CqtTotal() const
 
 	assert(data_->cqt->GetCQT().size() % data_->cqt->GetNumBins() == 0
 		and "Constant-Q spectrum is not rectangular");
-	const auto nSecs(data_->cqt->GetCQT().size() / data_->cqt->GetNumBins()
-		* data_->cqt->GetHopLength() / data_->cqt->GetSampleRate());
 
 	ostringstream os;
-	os << "MIDI duration:\t" << nSecs / 60 << " min : " << nSecs % 60 << " sec";
+	os << "MIDI duration:\t" << GetMidiSeconds() / 60 << " min : "
+		<< GetMidiSeconds() % 60 << " sec";
 	return move(os.str());
 }
+vector<float> PianoToMidi::GetCqt() const
+{
+	vector<float> result;
+	if (data_->cqt and not data_->cqt->GetCQT().empty())
+		result.assign(data_->cqt->GetCQT().cbegin(), data_->cqt->GetCQT().cend());
+	return move(result);
+}
+size_t PianoToMidi::GetMidiSeconds() const { return data_->cqt->GetCQT().size()
+	/ data_->cqt->GetNumBins() * data_->cqt->GetHopLength() / data_->cqt->GetSampleRate(); }
+
 string PianoToMidi::HarmPerc() const
 {
 	assert(data_->cqt and "CqtTotal should be called before HarmPerc");
@@ -164,7 +173,7 @@ string PianoToMidi::Tempo() const
 	return move(os.str());
 }
 
-string PianoToMidi::KerasLoad() const
+string PianoToMidi::KerasLoad(const string& path) const
 {
 	assert(data_->hpss and not data_->keySign.empty()
 		and "HarmPerc should be called before KerasLoad");
@@ -176,7 +185,7 @@ string PianoToMidi::KerasLoad() const
 	assert(data_->cqtHarmPadded.size() / data_->cqt->GetNumBins() >= nFrames
 		and "Padded spectrum must contain at least nFrames time frames");
 
-	data_->cnn = make_unique<KerasCnn>(kerasModel);
+	data_->cnn = make_unique<KerasCnn>(path + "\\" + kerasModel);
 	data_->probabs.resize(data_->cqtHarmPadded.size() / data_->cqt->GetNumBins() + 1 - nFrames);
 	assert(data_->probabs.size() >= data_->hpss->GetOnsetPeaks().back()
 		and "Input and output durations do not match");
@@ -184,7 +193,7 @@ string PianoToMidi::KerasLoad() const
 
 	return move(data_->cnn->GetLog());
 }
-int PianoToMidi::CnnProbabs() const
+WPARAM PianoToMidi::CnnProbabs() const
 {
 	assert(data_->cnn and "KerasLoad should be called before CnnProbabs");
 
@@ -203,7 +212,7 @@ int PianoToMidi::CnnProbabs() const
 		data_->probabs.at(data_->index) = data_->cnn->Predict2D(
 			data_->cqtHarmPadded.data() + static_cast<ptrdiff_t>(data_->index
 				* data_->cqt->GetNumBins()), nFrames, data_->cqt->GetNumBins());
-		return static_cast<int>(100. * data_->index++
+		return static_cast<WPARAM>(100. * data_->index++
 			* data_->cqt->GetNumBins() / data_->cqtHarmPadded.size());
 	}
 	++data_->index;
@@ -267,7 +276,7 @@ string PianoToMidi::Gamma() const
 		[](const pair<int, string>& val) { return val.second; }));
 
 	ostringstream os;
-	os << "Scale:\t";
+	os << "Scale:\t\t";
 	for (const auto& n : data_->gamma) os << n << ' ';
 	return move(os.str());
 }
