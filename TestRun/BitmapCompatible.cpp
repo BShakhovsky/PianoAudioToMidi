@@ -8,7 +8,7 @@ using std::make_unique;
 BitmapCompatible::BitmapCompatible(const HWND hWnd, const int cx, const int cy)
 	: canvas_(make_unique<CanvasGdi>(hWnd)),
 	hDCmem_(make_unique<DeviceCompatible>(*canvas_)),
-	hBitmap_(CreateCompatibleBitmap(*hDCmem_, cx, cy)),
+	hBitmap_(CreateCompatibleBitmap(*canvas_, cx, cy)),
 	cx_(cx), cy_(cy)
 {
 	SelectBitmap(*hDCmem_, hBitmap_);

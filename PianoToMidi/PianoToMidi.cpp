@@ -124,6 +124,7 @@ vector<float> PianoToMidi::GetCqt() const
 		result.assign(data_->cqt->GetCQT().cbegin(), data_->cqt->GetCQT().cend());
 	return move(result);
 }
+size_t PianoToMidi::GetNumBins() const { return data_->cqt->GetNumBins(); }
 size_t PianoToMidi::GetMidiSeconds() const { return data_->cqt->GetCQT().size()
 	/ data_->cqt->GetNumBins() * data_->cqt->GetHopLength() / data_->cqt->GetSampleRate(); }
 

@@ -16,6 +16,7 @@ public:
 
 	std::string CqtTotal() const;
 	std::vector<float> GetCqt() const;
+	size_t GetNumBins() const;
 	size_t GetMidiSeconds() const;
 
 	std::string HarmPerc() const;

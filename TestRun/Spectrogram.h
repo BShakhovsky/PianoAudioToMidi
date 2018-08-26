@@ -2,10 +2,10 @@
 
 class Spectrogram abstract
 {
-	static HWND spectrTitle, spectr, spectrLog, progBar, calcSpectr, convert;
-	static LONG spectrTitleWidth, spectrTitleHeight,
-		spectrWidth, spectrHeight, progBarHeight,
-		calcSpectrWidth, calcSpectrHeight, convetWidth, convertHeight, edge;
+	static HWND calcSpectr, spectrTitle, spectr, convert, progBar, spectrLog;
+	static LONG calcSpectrWidth, calcSpectrHeight, spectrTitleWidth, spectrTitleHeight,
+		spectrWidth, spectrHeight, convetWidth, convertHeight, progBarHeight;
+	static constexpr LONG edge = 10;
 public:
 	static LPCTSTR mediaFile;
 
@@ -18,5 +18,5 @@ private:
 
 	static std::unique_ptr<class PianoToMidi> media;
 	static std::string log;
-	static bool midiWritten;
+	static bool toRepaint, midiWritten;
 };

@@ -2,6 +2,7 @@
 #include "Spectrogram.h"
 #include "MainWindow.h"
 
+#include "CanvasGdi.h"
 #include "BitmapCompatible.h"
 #include "CursorWait.h"
 
@@ -15,16 +16,16 @@ HWND	Spectrogram::spectrTitle	= nullptr, Spectrogram::spectr	= nullptr,
 		Spectrogram::spectrLog		= nullptr, Spectrogram::progBar	= nullptr,
 		Spectrogram::calcSpectr		= nullptr, Spectrogram::convert = nullptr;
 
-LONG	Spectrogram::spectrTitleWidth	= 0, Spectrogram::spectrTitleHeight	= 0,
-		Spectrogram::spectrWidth		= 0, Spectrogram::spectrHeight		= 0,
-		Spectrogram::progBarHeight		= 0, Spectrogram::convetWidth		= 0,
-		Spectrogram::convertHeight		= 0, Spectrogram::calcSpectrWidth	= 0,
-		Spectrogram::calcSpectrHeight	= 0, Spectrogram::edge				= 10;
+LONG	Spectrogram::calcSpectrWidth	= 0,	Spectrogram::calcSpectrHeight	= 0,
+		Spectrogram::spectrTitleWidth	= 0,	Spectrogram::spectrTitleHeight	= 0,
+		Spectrogram::spectrWidth		= 0,	Spectrogram::spectrHeight		= 0,
+		Spectrogram::convetWidth		= 0,	Spectrogram::convertHeight		= 0,
+		Spectrogram::progBarHeight		= 0;
 
 LPCTSTR	Spectrogram::mediaFile = nullptr;
 std::unique_ptr<PianoToMidi> Spectrogram::media = nullptr;
 std::string Spectrogram::log = "";
-bool Spectrogram::midiWritten = false;
+bool Spectrogram::toRepaint = true, Spectrogram::midiWritten = false;
 
 BOOL Spectrogram::OnInitDialog(const HWND hDlg, const HWND, const LPARAM)
 {
@@ -36,24 +37,27 @@ BOOL Spectrogram::OnInitDialog(const HWND hDlg, const HWND, const LPARAM)
 	convert		= GetDlgItem(hDlg, IDB_CONVERT);
 
 	RECT rect;
-	GetWindowRect(spectrTitle, &rect);
-	spectrTitleWidth = rect.right - rect.left;
-	spectrTitleHeight = rect.bottom - rect.top;
-
-	GetWindowRect(progBar, &rect);
-	progBarHeight = rect.bottom - rect.top;
-
 	GetWindowRect(calcSpectr, &rect);
 	calcSpectrWidth = rect.right - rect.left;
 	calcSpectrHeight = rect.bottom - rect.top;
+
+	GetWindowRect(spectrTitle, &rect);
+	spectrTitleWidth = rect.right - rect.left;
+	spectrTitleHeight = rect.bottom - rect.top;
 
 	GetWindowRect(convert, &rect);
 	convetWidth = rect.right - rect.left;
 	convertHeight = rect.bottom - rect.top;
 
+	GetWindowRect(progBar, &rect);
+	progBarHeight = rect.bottom - rect.top;
+
 	ShowWindow(hDlg, SW_SHOWMAXIMIZED);
+
+//	assert(mediaFile and "Unknown audio file name");
 	media = make_unique<PianoToMidi>();
 	log.clear();
+	toRepaint = true;
 	midiWritten = false;
 	
 #ifdef UNICODE
@@ -81,7 +85,7 @@ BOOL Spectrogram::OnInitDialog(const HWND hDlg, const HWND, const LPARAM)
 	return true;
 }
 
-void Spectrogram::OnSize(const HWND, const UINT, const int cx, const int cy)
+void Spectrogram::OnSize(const HWND hDlg, const UINT, const int cx, const int cy)
 {
 	SetWindowPos(calcSpectr, nullptr,
 		(cx - calcSpectrWidth) / 2, edge,
@@ -108,21 +112,47 @@ void Spectrogram::OnSize(const HWND, const UINT, const int cx, const int cy)
 	SetWindowPos(spectrLog, nullptr, edge,
 		cy / 2 + convertHeight + progBarHeight + 3 * edge, cx - 2 * edge,
 		cy / 2 - convertHeight - progBarHeight - 4 * edge, SWP_NOZORDER);
+
+	InvalidateRect(hDlg, nullptr, true);
 }
 
-void Spectrogram::OnPaint(const HWND)
+void Spectrogram::OnPaint(const HWND hDlg)
 {
-	// TODO: Check that the spectrogram is refreshed without the need of window resizing
-	// TODO: Draw notes
-//	CanvasGdi canvas(hDlg);
+	CanvasGdi canvas(hDlg);
 	if (media->GetCqt().empty()) return;
+
+	const auto cqt(media->GetCqt());
+	const auto cqtSize(min(static_cast<size_t>(spectrWidth), cqt.size() / media->GetNumBins()));
+	wostringstream wos;
+	if (cqtSize == static_cast<size_t>(spectrWidth)) wos << TEXT("SPECTROGRAM OF THE FIRST ")
+		<< media->GetMidiSeconds() * cqtSize * media->GetNumBins() / cqt.size() << TEXT(" SECONDS:");
+	else wos << TEXT("SPECTROGRAM OF ALL THE ") << media->GetMidiSeconds() << TEXT(" SECONDS:");
+	Static_SetText(spectrTitle, wos.str().c_str());
+
+	if (not toRepaint) return;
+
+	const auto binWidth(spectrWidth / static_cast<LONG>(cqtSize));
+	const auto binsPerPixel((media->GetNumBins() - 1) / spectrHeight + 1);
+	const auto cqtMax(*max_element(cqt.cbegin(), cqt.cbegin()
+		+ static_cast<ptrdiff_t>(cqtSize * media->GetNumBins())));
 
 	const BitmapCompatible hBitmap(spectr, spectrWidth, spectrHeight);
 
-	SetTextColor(hBitmap, RGB(0, 0xB0, 0xFF));
-	const TCHAR text[](TEXT("Test Text"));
-	RECT rect{ 500, 100, 600, 200 };
-	DrawText(hBitmap, TEXT("Test Text"), static_cast<int>(ARRAYSIZE(text)), &rect, DT_CENTER);
+	const auto bottom((spectrHeight + (media->GetNumBins() / binsPerPixel)) / 2);
+	for (size_t i(0); i < cqtSize; ++i)
+		for (size_t j(0); j < media->GetNumBins() / binsPerPixel; ++j)
+		{
+			const auto bin(accumulate(cqt.cbegin() + static_cast<ptrdiff_t>(i * media->GetNumBins()
+				+ j * binsPerPixel), cqt.cbegin() + static_cast<ptrdiff_t>(i * media->GetNumBins()
+					+ (j + 1) * binsPerPixel), 0.f) * 5 / cqtMax / binsPerPixel);
+//			assert(bin >= 0 and bin <= 5 and "Wrong cqt-bin value");
+			SetPixelV(hBitmap, static_cast<int>(i), static_cast<int>(bottom - j),
+				bin < 1 ? RGB(0, 0, bin * 0xFF) : bin < 2 ? RGB(0, (bin - 1) * 0xFF, 0xFF) :
+				bin < 3 ? RGB(0, 0xFF, 0xFF * (3 - bin)) : bin < 4
+				? RGB((bin - 4) * 0xFF, 0xFF, 0) : RGB(0xFF, 0xFF * (5 - bin), 0));
+		}
+
+	// TODO: Draw notes
 }
 
 void Spectrogram::OnCommand(const HWND hDlg, const int id, const HWND hCtrl, const UINT)
@@ -144,13 +174,7 @@ void Spectrogram::OnCommand(const HWND hDlg, const int id, const HWND hCtrl, con
 				log += media->CqtTotal() + "\r\n";
 				log = regex_replace(log, regex("\r?\n\r?"), "\r\n"); // just in case
 				SetWindowTextA(spectrLog, log.c_str());
-				if (media->GetMidiSeconds() < 20)
-				{
-					wostringstream wos;
-					wos << TEXT("SPECTROGRAM OF ALL THE ")
-						<< media->GetMidiSeconds() << TEXT(" SECONDS:");
-					Static_SetText(spectrTitle, wos.str().c_str());
-				}
+				InvalidateRect(hDlg, nullptr, true);
 			}
 			catch (const CqtError& e)
 			{
@@ -254,7 +278,8 @@ void Spectrogram::OnCommand(const HWND hDlg, const int id, const HWND hCtrl, con
 				MessageBoxA(hDlg, e.what(), "Neural network forward pass error", MB_OK | MB_ICONHAND);
 				break;
 			}
-			SendMessage(progBar, PBM_SETPOS, 100, 0);
+			InvalidateRect(hDlg, nullptr, true);
+			SendMessage(progBar, PBM_SETPOS, 99, 0);
 
 			try { log += "\r\n" + media->Gamma() + "\r\n"; }
 			catch (const KerasError& e)
@@ -279,6 +304,7 @@ void Spectrogram::OnCommand(const HWND hDlg, const int id, const HWND hCtrl, con
 				log = regex_replace(log, regex("\r?\n\r?"), "\r\n"); // just in case
 				SetWindowTextA(spectrLog, log.c_str());
 				midiWritten = true;
+				SendMessage(progBar, PBM_SETPOS, 100, 0);
 			}
 			catch (const MidiOutError& e)
 			{
@@ -298,6 +324,8 @@ INT_PTR CALLBACK Spectrogram::Main(HWND hDlg, UINT message, WPARAM wParam, LPARA
 		HANDLE_MSG(hDlg, WM_SIZE,		OnSize);
 		HANDLE_MSG(hDlg, WM_PAINT,		OnPaint);
 		HANDLE_MSG(hDlg, WM_COMMAND,	OnCommand);
-	default: return false;
+	case WM_ENTERSIZEMOVE:	toRepaint = false; break;
+	case WM_EXITSIZEMOVE:	toRepaint = true; InvalidateRect(hDlg, nullptr, true);
 	}
+	return false;
 }
