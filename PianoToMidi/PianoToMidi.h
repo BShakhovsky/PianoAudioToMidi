@@ -26,6 +26,8 @@ public:
 	WPARAM CnnProbabs() const;
 
 	std::string Gamma() const;
+	const std::vector<size_t>& GetOnsetFrames() const;
+	const std::vector<std::vector<std::pair<size_t, float>>>& GetNotes() const;
 	std::string KeySignature() const;
 
 	void WriteMidi(const char* fileName) const;

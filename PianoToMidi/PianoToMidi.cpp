@@ -281,6 +281,13 @@ string PianoToMidi::Gamma() const
 	for (const auto& n : data_->gamma) os << n << ' ';
 	return move(os.str());
 }
+const vector<size_t>& PianoToMidi::GetOnsetFrames() const { return data_->hpss->GetOnsetPeaks(); }
+const vector<vector<pair<size_t, float>>>& PianoToMidi::GetNotes() const
+{
+	assert((data_->notes.empty() or data_->notes.size() == GetOnsetFrames().size())
+		and "Resultant notes and onset frames must be of the same size");
+	return data_->notes;
+}
 string PianoToMidi::KeySignature() const
 {
 	assert(not data_->notes.empty() and not data_->gamma.empty()

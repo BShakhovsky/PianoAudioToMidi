@@ -54,7 +54,7 @@ BOOL Spectrogram::OnInitDialog(const HWND hDlg, const HWND, const LPARAM)
 
 	ShowWindow(hDlg, SW_SHOWMAXIMIZED);
 
-//	assert(mediaFile and "Unknown audio file name");
+	assert(mediaFile and "Unknown audio file name");
 	media = make_unique<PianoToMidi>();
 	log.clear();
 	toRepaint = true;
@@ -85,35 +85,10 @@ BOOL Spectrogram::OnInitDialog(const HWND hDlg, const HWND, const LPARAM)
 	return true;
 }
 
-void Spectrogram::OnSize(const HWND hDlg, const UINT, const int cx, const int cy)
+void Spectrogram::OnDestroyDialog(const HWND)
 {
-	SetWindowPos(calcSpectr, nullptr,
-		(cx - calcSpectrWidth) / 2, edge,
-		0, 0, SWP_NOSIZE | SWP_NOZORDER);
-
-	SetWindowPos(spectrTitle, nullptr,
-		(cx - spectrTitleWidth) / 2, calcSpectrHeight + 2 * edge,
-		0, 0, SWP_NOSIZE | SWP_NOZORDER);
-	
-	spectrWidth = cx - 2 * edge;
-	spectrHeight = cy / 2 - calcSpectrHeight - spectrTitleHeight - 3 * edge;
-	SetWindowPos(spectr, nullptr,
-		edge, calcSpectrHeight + spectrTitleHeight + 3 * edge,
-		spectrWidth, spectrHeight, SWP_NOZORDER);
-	
-	SetWindowPos(convert, nullptr,
-		(cx - convetWidth) / 2, cy / 2 + edge,
-		0, 0, SWP_NOSIZE | SWP_NOZORDER);
-	
-	SetWindowPos(progBar, nullptr, edge,
-		cy / 2 + convertHeight + 2 * edge,
-		cx - 2 * edge, progBarHeight, SWP_NOZORDER);
-	
-	SetWindowPos(spectrLog, nullptr, edge,
-		cy / 2 + convertHeight + progBarHeight + 3 * edge, cx - 2 * edge,
-		cy / 2 - convertHeight - progBarHeight - 4 * edge, SWP_NOZORDER);
-
-	InvalidateRect(hDlg, nullptr, true);
+	media = nullptr;
+	log.clear();
 }
 
 void Spectrogram::OnPaint(const HWND hDlg)
@@ -145,14 +120,30 @@ void Spectrogram::OnPaint(const HWND hDlg)
 			const auto bin(accumulate(cqt.cbegin() + static_cast<ptrdiff_t>(i * media->GetNumBins()
 				+ j * binsPerPixel), cqt.cbegin() + static_cast<ptrdiff_t>(i * media->GetNumBins()
 					+ (j + 1) * binsPerPixel), 0.f) * 5 / cqtMax / binsPerPixel);
-//			assert(bin >= 0 and bin <= 5 and "Wrong cqt-bin value");
+			assert(bin >= 0 and bin <= 5 and "Wrong cqt-bin value");
 			SetPixelV(hBitmap, static_cast<int>(i), static_cast<int>(bottom - j),
 				bin < 1 ? RGB(0, 0, bin * 0xFF) : bin < 2 ? RGB(0, (bin - 1) * 0xFF, 0xFF) :
 				bin < 3 ? RGB(0, 0xFF, 0xFF * (3 - bin)) : bin < 4
 				? RGB((bin - 4) * 0xFF, 0xFF, 0) : RGB(0xFF, 0xFF * (5 - bin), 0));
 		}
 
-	// TODO: Draw notes
+	if (media->GetNotes().empty()) return;
+
+	for (size_t i(0); i < media->GetOnsetFrames().size(); ++i)
+	{
+		const auto onset(media->GetOnsetFrames().at(i));
+		if (onset > cqtSize) break;
+
+		for (const auto& note : media->GetNotes().at(i))
+		{
+			const auto bin(static_cast<int>(bottom
+				- note.first * media->GetNumBins() / 88 / binsPerPixel));
+			SelectObject(hBitmap, GetStockPen(BLACK_PEN));
+			SelectObject(hBitmap, GetStockBrush(WHITE_BRUSH));
+			Ellipse(hBitmap, static_cast<int>(onset) - 5, bin - 5,
+				static_cast<int>(onset) + 5, bin + 5);
+		}
+	}
 }
 
 void Spectrogram::OnCommand(const HWND hDlg, const int id, const HWND hCtrl, const UINT)
@@ -250,24 +241,29 @@ void Spectrogram::OnCommand(const HWND hDlg, const int id, const HWND hCtrl, con
 				// Consider using 'GetTickCount64' : GetTickCount overflows every 49 days,
 				// and code can loop indefinitely
 #pragma warning(suppress:28159)
-				auto timeStart(GetTickCount());
-				for (WPARAM percent(0); percent < 100u; percent = media->CnnProbabs())
+				const auto timeStart(GetTickCount());
+				const auto percentStart(media->CnnProbabs());
+				bool alreadyAsked(false);
+				for (auto percent(percentStart); percent < 100u; percent = media->CnnProbabs())
 				{
 					SendMessage(progBar, PBM_SETPOS, percent, 0);
-					// Consider using 'GetTickCount64' : GetTickCount overflows every 49 days,
-					// and code can loop indefinitely
+					if (not alreadyAsked and percent >= percentStart + 1)
+					{
+						alreadyAsked = true;
+						// Consider using 'GetTickCount64' : GetTickCount overflows every 49 days,
+						// and code can loop indefinitely
 #pragma warning(suppress:28159)
-					if (static_cast<int>(GetTickCount()) - static_cast<int>(timeStart) > 10'000)
-						if (MessageBox(hDlg,
-							TEXT("It seems that conversion might take a while.\n")
-							TEXT("Press OK if you want to continue waiting."),
-							TEXT("Neural net in process..."),
-							MB_ICONQUESTION | MB_OKCANCEL | MB_DEFBUTTON2) == IDCANCEL)
+						const auto seconds((GetTickCount() - timeStart) * (100 - percent) / 1'000);
+						ostringstream os;
+						os << "Conversion will take " << seconds / 60 << " min : "
+							<< seconds % 60 << " sec" << endl << "Press OK if you are willing to wait.";
+						if (MessageBoxA(hDlg, os.str().c_str(), "Neural net in process...",
+							MB_ICONQUESTION | MB_OKCANCEL | MB_DEFBUTTON1) == IDCANCEL)
 						{
-							EndDialog(hDlg, id);
+							Button_Enable(hCtrl, true);
 							return;
 						}
-						else timeStart = USER_TIMER_MAXIMUM;
+					}
 				}
 			}
 			catch (const KerasError& e)
@@ -278,10 +274,9 @@ void Spectrogram::OnCommand(const HWND hDlg, const int id, const HWND hCtrl, con
 				MessageBoxA(hDlg, e.what(), "Neural network forward pass error", MB_OK | MB_ICONHAND);
 				break;
 			}
-			InvalidateRect(hDlg, nullptr, true);
 			SendMessage(progBar, PBM_SETPOS, 99, 0);
 
-			try { log += "\r\n" + media->Gamma() + "\r\n"; }
+			try { log += media->Gamma() + "\r\n"; }
 			catch (const KerasError& e)
 			{
 				log += string("\n") + e.what();
@@ -291,6 +286,7 @@ void Spectrogram::OnCommand(const HWND hDlg, const int id, const HWND hCtrl, con
 				midiWritten = true;
 				break;
 			}
+			InvalidateRect(hDlg, nullptr, true);
 
 			log += media->KeySignature() + "\r\n";
 			log = regex_replace(log, regex("\r?\n\r?"), "\r\n"); // just in case
@@ -321,9 +317,12 @@ INT_PTR CALLBACK Spectrogram::Main(HWND hDlg, UINT message, WPARAM wParam, LPARA
 	switch (message)
 	{
 		HANDLE_MSG(hDlg, WM_INITDIALOG, OnInitDialog);
+		HANDLE_MSG(hDlg, WM_DESTROY,	OnDestroyDialog);
+
 		HANDLE_MSG(hDlg, WM_SIZE,		OnSize);
 		HANDLE_MSG(hDlg, WM_PAINT,		OnPaint);
 		HANDLE_MSG(hDlg, WM_COMMAND,	OnCommand);
+
 	case WM_ENTERSIZEMOVE:	toRepaint = false; break;
 	case WM_EXITSIZEMOVE:	toRepaint = true; InvalidateRect(hDlg, nullptr, true);
 	}

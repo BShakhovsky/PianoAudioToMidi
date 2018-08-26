@@ -8,29 +8,16 @@ HINSTANCE MainWindow::hInstance = nullptr;
 HWND MainWindow::hWndMain = nullptr;
 TCHAR MainWindow::path[] = TEXT("");
 
-BOOL MainWindow::OnCreate(const HWND, const LPCREATESTRUCT)
-{
-	GetCurrentDirectory(ARRAYSIZE(path), path);
-	return true;
-}
-
-void MainWindow::OpenAudioFile(LPCTSTR fileName)
+inline void MainWindow::OpenAudioFile(LPCTSTR fileName)
 {
 	Spectrogram::mediaFile = fileName;
 	// Pointer to potentially throwing function passed to extern C function under -EHc.
 	// Undefined behavior may occur if this function throws
 #pragma warning(suppress:5039)
-	DialogBox(MainWindow::hInstance, MAKEINTRESOURCE(IDD_SPECTRUM), MainWindow::hWndMain, Spectrogram::Main);
-}
-void MainWindow::OnDropFiles(const HWND, const HDROP hDrop)
-{
-	TCHAR fileName[MAX_PATH] = TEXT("");
-	DragQueryFile(hDrop, 0, fileName, sizeof fileName / sizeof *fileName);
-	OpenAudioFile(fileName);
-	DragFinish(hDrop);
+	DialogBox(hInstance, MAKEINTRESOURCE(IDD_SPECTRUM), hWndMain, Spectrogram::Main);
 }
 
-void MainWindow::OnCommand(const HWND hWnd, const int id, const HWND, const UINT)
+inline void MainWindow::OnCommand(const HWND hWnd, const int id, const HWND, const UINT)
 {
 	switch (id)
 	{
@@ -48,7 +35,7 @@ void MainWindow::OnCommand(const HWND hWnd, const int id, const HWND, const UINT
 		// Pointer to potentially throwing function passed to extern C function under -EHc.
 		// Undefined behavior may occur if this function throws
 #pragma warning(suppress:5039)
-					DialogBox(hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);	break;
+		DialogBox(hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);	break;
 	case IDM_EXIT:	DestroyWindow(hWnd);												break;
 	}
 }
