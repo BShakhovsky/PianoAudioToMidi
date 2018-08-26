@@ -292,11 +292,48 @@ void Spectrogram::OnCommand(const HWND hDlg, const int id, const HWND hCtrl, con
 			log = regex_replace(log, regex("\r?\n\r?"), "\r\n"); // just in case
 			SetWindowTextA(spectrLog, log.c_str());
 
+			OPENFILENAME fileName{ sizeof fileName, hDlg };
+			fileName.lpstrFilter = TEXT("MIDI files (*.mid)\0")	TEXT("*.mid*\0");
+#ifdef UNICODE
+			wstring
+#else
+			string
+#endif
+				fileT(mediaFile);
+			auto fileNameIndex(fileT.find_last_of(TEXT("\\/")));
+			if (fileNameIndex < fileT.length()) fileT.erase(0, fileNameIndex + 1);
+			fileNameIndex = fileT.find_last_of('.');
+			if (fileNameIndex < fileT.length()) fileT.erase(fileNameIndex);
+
+			TCHAR buf[MAX_PATH];
+#pragma warning(suppress:4189) // Local variable is initialized but not referenced
+			const auto unusedIter(copy(fileT.cbegin(), fileT.cend(), buf));
+			buf[fileT.length()] = 0;
+			fileName.lpstrFile = buf;
+			fileName.nMaxFile = sizeof buf / sizeof *buf;
+
+			fileName.Flags = OFN_OVERWRITEPROMPT;
+			while (not GetSaveFileName(&fileName)) if (MessageBox(hDlg,
+				TEXT("MIDI-file will NOT be saved! Are you sure?!\n")
+				TEXT("You will have to convert the audio again from the beginning."),
+				TEXT("File save error"), MB_ICONHAND | MB_YESNO | MB_DEFBUTTON2) == IDYES)
+			{
+				log += "\r\nMIDI-file not saved :(";
+				SetWindowTextA(spectrLog, log.c_str());
+				return;
+			}
+
+#ifdef UNICODE
+			const wstring fileW(fileName.lpstrFile);
+			string fileA(fileW.cbegin(), fileW.cend());
+#else
+			string fileA(fileName.lpstrFile);
+#endif
+			if (fileA.length() < 4 or fileA.substr(fileA.length() - 4) != ".mid") fileA += ".mid";
 			try
 			{
-				// TODO: file-open dialog box to allow for choosing output MIDI-file name
-//				media->WriteMidi("../../Test songs/Test.mid");
-				log += "\r\nMIDI written.";
+				media->WriteMidi(fileA.c_str());
+				log += "\r\n" + fileA + " saved.";
 				log = regex_replace(log, regex("\r?\n\r?"), "\r\n"); // just in case
 				SetWindowTextA(spectrLog, log.c_str());
 				midiWritten = true;
