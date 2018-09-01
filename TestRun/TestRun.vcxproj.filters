@@ -31,12 +31,6 @@
     <Filter Include="Header Files\Main">
       <UniqueIdentifier>{cc439e27-9d4a-40fe-b130-f1e788d137a0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\Smart Pointers">
-      <UniqueIdentifier>{1d503f8c-a5ac-45d5-8db6-ed430b56651e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Smart Pointers">
-      <UniqueIdentifier>{54fffcb1-48f1-49ea-a79a-5fa13f5eac12}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -60,18 +54,6 @@
     <ClInclude Include="Spectrogram.h">
       <Filter>Header Files\Dialogs</Filter>
     </ClInclude>
-    <ClInclude Include="CanvasGdi.h">
-      <Filter>Header Files\Smart Pointers</Filter>
-    </ClInclude>
-    <ClInclude Include="CursorWait.h">
-      <Filter>Header Files\Smart Pointers</Filter>
-    </ClInclude>
-    <ClInclude Include="DeviceCompatible.h">
-      <Filter>Header Files\Smart Pointers</Filter>
-    </ClInclude>
-    <ClInclude Include="BitmapCompatible.h">
-      <Filter>Header Files\Smart Pointers</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -88,9 +70,6 @@
     </ClCompile>
     <ClCompile Include="Spectrogram.cpp">
       <Filter>Source Files\Dialogs</Filter>
-    </ClCompile>
-    <ClCompile Include="BitmapCompatible.cpp">
-      <Filter>Source Files\Smart Pointers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

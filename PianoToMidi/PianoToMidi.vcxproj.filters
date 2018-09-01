@@ -31,6 +31,15 @@
     <Filter Include="Header Files\Keras CNN">
       <UniqueIdentifier>{ccdbd9a6-997b-46ac-bb97-ba2f3d9ebea4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Wrappers">
+      <UniqueIdentifier>{fa9ca301-2448-4b39-bf0c-6791c54a5045}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Wrappers">
+      <UniqueIdentifier>{d096d940-4dac-4c09-ae39-953508040541}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Wrappers\WinApi">
+      <UniqueIdentifier>{9e2db454-7023-4978-b7f6-3fe73547153c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -84,17 +93,32 @@
     <ClInclude Include="KerasError.h">
       <Filter>Header Files\Keras CNN</Filter>
     </ClInclude>
-    <ClInclude Include="PianoToMidi.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MidiOutError.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Tempogram.h">
       <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
     <ClInclude Include="EnumFuncs.h">
       <Filter>Header Files\Spectrums</Filter>
+    </ClInclude>
+    <ClInclude Include="MidiOutError.h">
+      <Filter>Header Files\Wrappers</Filter>
+    </ClInclude>
+    <ClInclude Include="PianoToMidi.h">
+      <Filter>Header Files\Wrappers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\PianoToMidi_Win.h">
+      <Filter>Header Files\Wrappers</Filter>
+    </ClInclude>
+    <ClInclude Include="BitmapCompatible.h">
+      <Filter>Header Files\Wrappers\WinApi</Filter>
+    </ClInclude>
+    <ClInclude Include="CanvasGdi.h">
+      <Filter>Header Files\Wrappers\WinApi</Filter>
+    </ClInclude>
+    <ClInclude Include="CursorWait.h">
+      <Filter>Header Files\Wrappers\WinApi</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceCompatible.h">
+      <Filter>Header Files\Wrappers\WinApi</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -131,14 +155,20 @@
     <ClCompile Include="KerasCnn.cpp">
       <Filter>Source Files\Keras CNN</Filter>
     </ClCompile>
-    <ClCompile Include="PianoToMidi.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Tempogram.cpp">
       <Filter>Source Files\Spectrums</Filter>
     </ClCompile>
     <ClCompile Include="EnumFuncs.cpp">
       <Filter>Source Files\Spectrums</Filter>
+    </ClCompile>
+    <ClCompile Include="PianoToMidi.cpp">
+      <Filter>Source Files\Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="PianoToMidi_Win.cpp">
+      <Filter>Source Files\Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="BitmapCompatible.cpp">
+      <Filter>Source Files\Wrappers</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
