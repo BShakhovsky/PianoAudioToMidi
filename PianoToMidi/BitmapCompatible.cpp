@@ -1,12 +1,12 @@
 #include "stdafx.h"
 #include "BitmapCompatible.h"
-#include "CanvasGdi.h"
+#include "CanvasGdi_Spectrum.h"
 #include "DeviceCompatible.h"
 
 using std::make_unique;
 
 BitmapCompatible::BitmapCompatible(const HWND hWnd, const int cx, const int cy)
-	: canvas_(make_unique<CanvasGdi>(hWnd)),
+	: canvas_(make_unique<CanvasGdi_Spectrum>(hWnd)),
 	hDCmem_(make_unique<DeviceCompatible>(*canvas_)),
 	hBitmap_(CreateCompatibleBitmap(*canvas_, cx, cy)),
 	cx_(cx), cy_(cy)

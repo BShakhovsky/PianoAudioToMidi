@@ -2,7 +2,7 @@
 #include "AudioLoader.h"
 #include "FFmpegError.h"
 #include "MonoResampler.h"
-#include "Frame.h"
+#include "FrameCodec.h"
 #include "Packet.h"
 
 using namespace std;
@@ -98,7 +98,7 @@ int AudioLoader::DecodePacket() const
 		+ string(av_make_error_string(errStr, sizeof errStr / sizeof *errStr, response))).c_str());
 	while (response >= 0)
 	{
-		Frame frame(data_->frame);
+		FrameCodec frame(data_->frame);
 		response = frame.Receive(data_->codecContext);
 		if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) break;
 		else if (response < 0) throw FFmpegError(("Could not receive a frame from the decoder:\n"

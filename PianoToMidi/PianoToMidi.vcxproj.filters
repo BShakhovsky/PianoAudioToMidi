@@ -51,9 +51,6 @@
     <ClInclude Include="FFmpegError.h">
       <Filter>Header Files\FFmpeg</Filter>
     </ClInclude>
-    <ClInclude Include="Frame.h">
-      <Filter>Header Files\FFmpeg</Filter>
-    </ClInclude>
     <ClInclude Include="Packet.h">
       <Filter>Header Files\FFmpeg</Filter>
     </ClInclude>
@@ -111,13 +108,16 @@
     <ClInclude Include="BitmapCompatible.h">
       <Filter>Header Files\Wrappers\WinApi</Filter>
     </ClInclude>
-    <ClInclude Include="CanvasGdi.h">
-      <Filter>Header Files\Wrappers\WinApi</Filter>
-    </ClInclude>
     <ClInclude Include="CursorWait.h">
       <Filter>Header Files\Wrappers\WinApi</Filter>
     </ClInclude>
     <ClInclude Include="DeviceCompatible.h">
+      <Filter>Header Files\Wrappers\WinApi</Filter>
+    </ClInclude>
+    <ClInclude Include="FrameCodec.h">
+      <Filter>Header Files\FFmpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="CanvasGdi_Spectrum.h">
       <Filter>Header Files\Wrappers\WinApi</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,10 +1,10 @@
 #pragma once
 
-class Frame
+class FrameCodec
 {
 public:
-	explicit Frame(AVFrame* frame) : frame_(frame), isFrameReceived_(false) {}
-	~Frame()
+	explicit FrameCodec(AVFrame* frame) : frame_(frame), isFrameReceived_(false) {}
+	~FrameCodec()
 	{
 		assert("Frame::Receive() was not called."
 			&& "Then what for did you instantiate Frame object?" && isFrameReceived_);
@@ -22,5 +22,5 @@ private:
 	bool isFrameReceived_;
 	const BYTE padding_[sizeof(INT_PTR) - sizeof(bool)]{ 0 };
 
-	const Frame& operator=(const Frame&) = delete;
+	const FrameCodec& operator=(const FrameCodec&) = delete;
 };

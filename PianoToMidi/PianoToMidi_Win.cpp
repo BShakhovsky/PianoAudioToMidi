@@ -2,7 +2,7 @@
 #include "PianoToMidi_Win.h"
 #include "PianoToMidi.h"
 #include "CursorWait.h"
-#include "CanvasGdi.h"
+#include "CanvasGdi_Spectrum.h"
 #include "BitmapCompatible.h"
 
 using namespace std;
@@ -247,7 +247,7 @@ string PianoToMidi_Win::Convert(LPCTSTR mediaFile)
 
 void PianoToMidi_Win::OnPaint() const
 {
-	CanvasGdi canvas(hDlg_);
+	CanvasGdi_Spectrum canvas(hDlg_);
 	if (media_->GetCqt().empty()) return;
 
 	const auto cqt(media_->GetCqt());

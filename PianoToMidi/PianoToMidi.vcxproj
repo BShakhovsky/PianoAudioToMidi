@@ -189,7 +189,7 @@
     <ClInclude Include="AlignedVector.h" />
     <ClInclude Include="AudioLoader.h" />
     <ClInclude Include="BitmapCompatible.h" />
-    <ClInclude Include="CanvasGdi.h" />
+    <ClInclude Include="CanvasGdi_Spectrum.h" />
     <ClInclude Include="ConstantQ.h" />
     <ClInclude Include="CqtBasis.h" />
     <ClInclude Include="CqtError.h" />
@@ -203,7 +203,7 @@
     <ClInclude Include="MidiOutError.h" />
     <ClInclude Include="PianoToMidi.h" />
     <ClInclude Include="ShortTimeFourier.h" />
-    <ClInclude Include="Frame.h" />
+    <ClInclude Include="FrameCodec.h" />
     <ClInclude Include="Packet.h" />
     <ClInclude Include="MonoResampler.h" />
     <ClInclude Include="SparseMatrix.h" />
