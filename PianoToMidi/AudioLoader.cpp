@@ -146,7 +146,7 @@ void AudioLoader::MonoResample(int rate, const bool isFloatFmt) const
 	if (rate == 0) rate = data_->codecContext->sample_rate;
 	const auto format(isFloatFmt ? AV_SAMPLE_FMT_FLT : AV_SAMPLE_FMT_S16);
 	MonoResampler resampler;
-	const auto result(resampler.Resample(data_->rawData.data(), data_->rawData.size(),
+	const auto result(resampler.FFmpegResample(data_->rawData.data(), data_->rawData.size(),
 		data_->codecContext->channels, data_->codecContext->sample_rate, rate,
 		data_->codecContext->sample_fmt, format));
 	data_->rawData.assign(result.first, result.first + result.second);

@@ -54,22 +54,22 @@ HarmonicPercussive::HarmonicPercussive(const shared_ptr<ConstantQ>& cqt,
 
 	assert(min(margHarm, margPerc) >= 1 and "HPSS margins must be >= 1.0, a typical range is [1...10]");
 
-	vector<float> paddedBuff(((cqt->GetCQT().size()
+	vector<float> paddedBuff(((cqt->GetCQT()->size()
 		/ cqt->GetNumBins()) + kernelHarm - 1) * cqt->GetNumBins());
-	CHECK_IPP_RESULT(ippiCopyMirrorBorder_32f_C1R_L(cqt->GetCQT().data(),
-		static_cast<int>(cqt->GetNumBins() * sizeof cqt->GetCQT().front()),
-		{ static_cast<int>(cqt->GetNumBins()), static_cast<int>(cqt->GetCQT().size()
+	CHECK_IPP_RESULT(ippiCopyMirrorBorder_32f_C1R_L(cqt->GetCQT()->data(),
+		static_cast<int>(cqt->GetNumBins() * sizeof cqt->GetCQT()->front()),
+		{ static_cast<int>(cqt->GetNumBins()), static_cast<int>(cqt->GetCQT()->size()
 			/ cqt->GetNumBins()) }, paddedBuff.data(), static_cast<int>(cqt->GetNumBins()
 				* sizeof paddedBuff.front()), { static_cast<int>(cqt->GetNumBins()),
 		static_cast<int>(paddedBuff.size() / cqt->GetNumBins()) }, kernelHarm / 2, 0));
 
 	Ipp32u buffSize;
 	CHECK_IPP_RESULT(ippiFilterMedianGetBufferSize_64f({ static_cast<int>(cqt->GetNumBins()),
-		static_cast<int>(cqt->GetCQT().size() / cqt->GetNumBins()) },
+		static_cast<int>(cqt->GetCQT()->size() / cqt->GetNumBins()) },
 		{ 1, kernelHarm }, 1, &buffSize));
 	vector<Ipp8u> buff(buffSize);
 
-	vector<double> filtDouble(cqt->GetCQT().size()),
+	vector<double> filtDouble(cqt->GetCQT()->size()),
 		paddedDouble(paddedBuff.cbegin(), paddedBuff.cend());
 	CHECK_IPP_RESULT(ippiFilterMedian_64f_C1R(paddedDouble.data(),
 		static_cast<int>(cqt->GetNumBins() * sizeof paddedDouble.front()), filtDouble.data(),
@@ -82,22 +82,22 @@ HarmonicPercussive::HarmonicPercussive(const shared_ptr<ConstantQ>& cqt,
 		[](double val) { return static_cast<float>(val); }));
 
 
-	paddedBuff.resize(cqt->GetCQT().size() / cqt->GetNumBins()
+	paddedBuff.resize(cqt->GetCQT()->size() / cqt->GetNumBins()
 		* (cqt->GetNumBins() + kernelPerc - 1));
-	CHECK_IPP_RESULT(ippiCopyMirrorBorder_32f_C1R_L(cqt->GetCQT().data(),
-		static_cast<int>(cqt->GetNumBins() * sizeof cqt->GetCQT().front()),
-		{ static_cast<int>(cqt->GetNumBins()), static_cast<int>(cqt->GetCQT().size()
+	CHECK_IPP_RESULT(ippiCopyMirrorBorder_32f_C1R_L(cqt->GetCQT()->data(),
+		static_cast<int>(cqt->GetNumBins() * sizeof cqt->GetCQT()->front()),
+		{ static_cast<int>(cqt->GetNumBins()), static_cast<int>(cqt->GetCQT()->size()
 			/ cqt->GetNumBins()) }, paddedBuff.data(), static_cast<int>((cqt->GetNumBins()
 				+ kernelPerc - 1) * sizeof paddedBuff.front()),
 		{ static_cast<int>(cqt->GetNumBins() + kernelPerc - 1),
-		static_cast<int>(cqt->GetCQT().size() / cqt->GetNumBins()) }, 0, kernelPerc / 2));
+		static_cast<int>(cqt->GetCQT()->size() / cqt->GetNumBins()) }, 0, kernelPerc / 2));
 
 	CHECK_IPP_RESULT(ippiFilterMedianGetBufferSize_64f({ static_cast<int>(cqt->GetNumBins()),
-		static_cast<int>(cqt->GetCQT().size() / cqt->GetNumBins()) },
+		static_cast<int>(cqt->GetCQT()->size() / cqt->GetNumBins()) },
 		{ kernelPerc, 1 }, 1, &buffSize));
 	buff.resize(buffSize);
 
-	assert(filtDouble.size() == cqt->GetCQT().size() and
+	assert(filtDouble.size() == cqt->GetCQT()->size() and
 		"Harmonic & percussive matrix sizes must be equal");
 	paddedDouble.assign(paddedBuff.cbegin(), paddedBuff.cend());
 	CHECK_IPP_RESULT(ippiFilterMedian_64f_C1R(paddedDouble.data(),
@@ -116,9 +116,10 @@ HarmonicPercussive::HarmonicPercussive(const shared_ptr<ConstantQ>& cqt,
 	SoftMask(&harm_, refPerc, power, margHarm == 1 and margPerc == 1);
 	SoftMask(&perc_, refHarm, power, margHarm == 1 and margPerc == 1);
 
-	CHECK_IPP_RESULT(ippsMul_32f_I(cqt->GetCQT().data(), harm_.data(), static_cast<int>(harm_.size())));
-	CHECK_IPP_RESULT(ippsMul_32f_I(cqt->GetCQT().data(), perc_.data(), static_cast<int>(perc_.size())));
+	CHECK_IPP_RESULT(ippsMul_32f_I(cqt->GetCQT()->data(), harm_.data(), static_cast<int>(harm_.size())));
+	CHECK_IPP_RESULT(ippsMul_32f_I(cqt->GetCQT()->data(), perc_.data(), static_cast<int>(perc_.size())));
 }
+HarmonicPercussive::~HarmonicPercussive() {}; // C4710 Function not inlined
 
 
 void HarmonicPercussive::OnsetEnvelope(const size_t lag, const int maxSize,

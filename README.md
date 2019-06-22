@@ -6,7 +6,7 @@ https://github.com/BShakhovsky/PolyphonicPianoTranscription
 
 The Python code from above is translated into pure C++ here, in order to make this C++ static library available from my 3D-piano application:
 
-https://github.com/BShakhovsky/PianoFingers3D
+https://github.com/BShakhovsky/PianoTranscription3D
 
 Python neural network is converted to C++ with the help of the following library:
 

@@ -23,20 +23,20 @@
     <ProjectGuid>{F984703B-D4AC-4D54-A177-DDF5424548A4}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>PianoToMidi</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <UseIntelIPP>true</UseIntelIPP>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseIntelIPP>true</UseIntelIPP>
@@ -44,14 +44,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <UseIntelIPP>true</UseIntelIPP>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseIntelIPP>true</UseIntelIPP>
@@ -78,21 +78,25 @@
     <LinkIncremental>true</LinkIncremental>
     <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>true</RunCodeAnalysis>
+    <IncludePath>C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2019.4.245\windows\mkl\include\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>true</RunCodeAnalysis>
+    <IncludePath>C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2019.4.245\windows\mkl\include\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>true</RunCodeAnalysis>
+    <IncludePath>C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2019.4.245\windows\mkl\include\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>true</RunCodeAnalysis>
+    <IncludePath>C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2019.4.245\windows\mkl\include\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -104,7 +108,7 @@
       <ConformanceMode>true</ConformanceMode>
       <EnablePREfast>true</EnablePREfast>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(FFmpeg);$(Juce);$(Boost);$(Fdeep);$(Fplus);$(Eigen);$(NLohmann);C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2018.3.210\windows\mkl\include;$(SolutionDir);C:\Program Files (x86)\Visual Leak Detector\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CppLibs)FFmpeg\$(Platform);$(CppLibs)Juce;$(CppLibs)Boost;$(CppLibs)Fdeep;$(CppLibs)Fplus;$(CppLibs)Eigen;$(CppLibs)NLohmann;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
@@ -112,7 +116,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalLibraryDirectories>$(FFmpeg)Libs$(PlatformArchitecture);$(Juce)$(Platform)\$(Configuration);C:\Program Files (x86)\Visual Leak Detector\lib\Win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CppLibs)FFmpeg\$(Platform);$(CppLibs)Juce\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -125,14 +129,14 @@
       <ConformanceMode>true</ConformanceMode>
       <EnablePREfast>true</EnablePREfast>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(FFmpeg);$(Juce);$(Boost);$(Fdeep);$(Fplus);$(Eigen);$(NLohmann);C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2018.3.210\windows\mkl\include;$(SolutionDir);C:\Program Files (x86)\Visual Leak Detector\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CppLibs)FFmpeg\$(Platform);$(CppLibs)Juce;$(CppLibs)Boost;$(CppLibs)Fdeep;$(CppLibs)Fplus;$(CppLibs)Eigen;$(CppLibs)NLohmann;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalLibraryDirectories>$(FFmpeg)Libs$(PlatformArchitecture);$(Juce)$(Platform)\$(Configuration);C:\Program Files (x86)\Visual Leak Detector\lib\Win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CppLibs)FFmpeg\$(Platform);$(CppLibs)Juce\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -146,7 +150,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <EnablePREfast>true</EnablePREfast>
-      <AdditionalIncludeDirectories>$(FFmpeg);$(Juce);$(Boost);$(Fdeep);$(Fplus);$(Eigen);$(NLohmann);C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2018.3.210\windows\mkl\include;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CppLibs)FFmpeg\$(Platform);$(CppLibs)Juce;$(CppLibs)Boost;$(CppLibs)Fdeep;$(CppLibs)Fplus;$(CppLibs)Eigen;$(CppLibs)NLohmann;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
@@ -157,7 +161,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalLibraryDirectories>$(FFmpeg)Libs$(PlatformArchitecture);$(Juce)$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CppLibs)FFmpeg\$(Platform);$(CppLibs)Juce\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -171,7 +175,7 @@
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <EnablePREfast>true</EnablePREfast>
-      <AdditionalIncludeDirectories>$(FFmpeg);$(Juce);$(Boost);$(Fdeep);$(Fplus);$(Eigen);$(NLohmann);C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2018.3.210\windows\mkl\include;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CppLibs)FFmpeg\$(Platform);$(CppLibs)Juce;$(CppLibs)Boost;$(CppLibs)Fdeep;$(CppLibs)Fplus;$(CppLibs)Eigen;$(CppLibs)NLohmann;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -181,7 +185,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalLibraryDirectories>$(FFmpeg)Libs$(PlatformArchitecture);$(Juce)$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CppLibs)FFmpeg\$(Platform);$(CppLibs)Juce\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -198,15 +202,19 @@
     <ClInclude Include="FFmpegError.h" />
     <ClInclude Include="HarmonicPercussive.h" />
     <ClInclude Include="IntelCheckStatus.h" />
-    <ClInclude Include="KerasCnn.h" />
+    <ClInclude Include="KerasRnn.h" />
     <ClInclude Include="KerasError.h" />
+    <ClInclude Include="MelError.h" />
+    <ClInclude Include="MelTransform.h" />
     <ClInclude Include="MidiOutError.h" />
+    <ClInclude Include="MyError.h" />
     <ClInclude Include="PianoToMidi.h" />
     <ClInclude Include="ShortTimeFourier.h" />
     <ClInclude Include="FrameCodec.h" />
     <ClInclude Include="Packet.h" />
     <ClInclude Include="MonoResampler.h" />
     <ClInclude Include="SparseMatrix.h" />
+    <ClInclude Include="SpecPostProc.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="EnumFuncs.h" />
@@ -217,9 +225,9 @@
     <ClCompile Include="BitmapCompatible.cpp" />
     <ClCompile Include="ConstantQ.cpp" />
     <ClCompile Include="CqtBasis.cpp" />
-    <ClCompile Include="FFmpegError.cpp" />
     <ClCompile Include="HarmonicPercussive.cpp" />
-    <ClCompile Include="KerasCnn.cpp" />
+    <ClCompile Include="KerasRnn.cpp" />
+    <ClCompile Include="MelTransform.cpp" />
     <ClCompile Include="PianoToMidi.cpp" />
     <ClCompile Include="PianoToMidi_Win.cpp" />
     <ClCompile Include="ShortTimeFourier.cpp" />
@@ -227,6 +235,7 @@
     <ClCompile Include="IntelCheckStatus.cpp" />
     <ClCompile Include="EnumFuncs.cpp" />
     <ClCompile Include="SparseMatrix.cpp" />
+    <ClCompile Include="SpecPostProc.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

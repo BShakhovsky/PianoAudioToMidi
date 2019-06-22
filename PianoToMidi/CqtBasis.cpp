@@ -43,12 +43,13 @@ void CqtBasis::CalcFrequencies(const int rate, const float fMin, const size_t nB
 
 void CqtBasis::CalcLengths(const int rate, const float fMin, const size_t nBins)
 {
+	using placeholders::_1;
+
 	CalcFrequencies(rate, fMin, nBins);
 
 	// Fractional lengths of each filter:
 	lens_.resize(nBins);
-	const auto unusedIter(transform(freqs_.cbegin(), freqs_.cend(), lens_.begin(),
-		[this, &rate](float freq) { return Q_ * rate / freq; }));
+	const auto unusedIter(transform(freqs_.cbegin(), freqs_.cend(), lens_.begin(), bind(divides<float>(), Q_ * rate, _1)));
 	assert(lens_.front() == *max_element(lens_.cbegin(), lens_.cend()) &&
 		"Mistake in CQT-basis filter lengths");
 }

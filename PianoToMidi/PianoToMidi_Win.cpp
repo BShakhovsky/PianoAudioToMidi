@@ -21,11 +21,17 @@ LONG GetWindowHeight(const HWND hWnd)
 }
 
 PianoToMidi_Win::PianoToMidi_Win(const HWND hDlg, const int calcSpectr, const int spectrTitle,
+	const int radioGroup, const int radioCqt, const int radioMel,
 	const int convert, const int progBar, const int log, const int spectr)
 	: media_(make_unique<PianoToMidi>()),
 	hDlg_(hDlg),
 	calcSpectr_(GetDlgItem(hDlg, calcSpectr)),
 	spectrTitle_(GetDlgItem(hDlg, spectrTitle)),
+
+	radioGroup_(GetDlgItem(hDlg, radioGroup)),
+	radioCqt_(GetDlgItem(hDlg, radioCqt)),
+	radioMel_(GetDlgItem(hDlg, radioMel)),
+
 	spectr_(GetDlgItem(hDlg, spectr)),
 	convert_(GetDlgItem(hDlg, convert)),
 	progBar_(GetDlgItem(hDlg, progBar)),
@@ -41,11 +47,17 @@ PianoToMidi_Win::PianoToMidi_Win(const HWND hDlg, const int calcSpectr, const in
 
 	spectrWidth_(GetWindowWidth(spectr_)),
 	spectrHeight_(GetWindowHeight(spectr_)),
+	radioGroupWidth_(GetWindowWidth(radioGroup_)),
+	radioGroupHeight_(GetWindowHeight(radioGroup_)),
 
-	toRepaint_(true)
+	toRepaint_(true), isCqt_(true)
 {}
 PianoToMidi_Win::~PianoToMidi_Win() {}
 
+void PianoToMidi_Win::FFmpegDecode(LPCWSTR fileNameW)
+{
+	FFmpegDecode(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(fileNameW).c_str());
+}
 void PianoToMidi_Win::FFmpegDecode(LPCSTR aFile)
 {
 	try
@@ -65,8 +77,25 @@ void PianoToMidi_Win::FFmpegDecode(LPCSTR aFile)
 
 void PianoToMidi_Win::Spectrum(const string& pathA)
 {
+	Button_SetCheck(isCqt_ ? radioCqt_ : radioMel_, true);
+
 	CursorWait cursor;
 	Button_Enable(calcSpectr_, false);
+
+	try
+	{
+		log_ += media_->MelSpectrum() + "\r\n";
+		log_ = regex_replace(log_, regex("\r?\n\r?"), "\r\n"); // just in case
+		SetWindowTextA(spectrLog_, log_.c_str());
+	}
+	catch (const MelError& e)
+	{
+		log_ += string("\r\n") + e.what();
+		log_ = regex_replace(log_, regex("\r?\n\r?"), "\r\n"); // just in case
+		SetWindowTextA(spectrLog_, log_.c_str());
+		MessageBoxA(hDlg_, e.what(), "Mel Transform error", MB_OK | MB_ICONHAND);
+		return;
+	}
 
 	try
 	{
@@ -134,6 +163,8 @@ void PianoToMidi_Win::Spectrum(const string& pathA)
 
 string PianoToMidi_Win::Convert(LPCTSTR mediaFile)
 {
+	DisableProcessWindowsGhosting();
+
 	CursorWait cursor;
 	Button_Enable(convert_, false);
 
@@ -143,27 +174,31 @@ string PianoToMidi_Win::Convert(LPCTSTR mediaFile)
 		// and code can loop indefinitely
 #pragma warning(suppress:28159)
 		const auto timeStart(GetTickCount());
-		const auto percentStart(media_->CnnProbabs());
 		bool alreadyAsked(false);
-		for (auto percent(percentStart); percent < 100u; percent = media_->CnnProbabs())
+		for (auto percent(media_->RnnProbabs()); percent < 100u; percent = media_->RnnProbabs())
 		{
 			SendMessage(progBar_, PBM_SETPOS, percent, 0);
-			if (not alreadyAsked and percent >= percentStart + 1)
+			if (not alreadyAsked and percent >= 1)
 			{
 				alreadyAsked = true;
 				// Consider using 'GetTickCount64' : GetTickCount overflows every 49 days,
 				// and code can loop indefinitely
 #pragma warning(suppress:28159)
-				const auto seconds((GetTickCount() - timeStart) * (100 - percent) / 1'000);
+				const auto seconds((GetTickCount() - timeStart) / percent / 10);
 				ostringstream os;
 				os << "Conversion will take " << seconds / 60 << " min : "
 					<< seconds % 60 << " sec" << endl << "Press OK if you are willing to wait.";
+
+				SendMessage(progBar_, PBM_SETSTATE, PBST_ERROR, 0);
+				SendMessage(progBar_, PBM_SETBARCOLOR, 0, RGB(0xFF, 0, 0));
 				if (MessageBoxA(hDlg_, os.str().c_str(), "Neural net in process...",
 					MB_ICONQUESTION | MB_OKCANCEL | MB_DEFBUTTON1) == IDCANCEL)
 				{
 					Button_Enable(convert_, true);
 					return "";
 				}
+				SendMessage(progBar_, PBM_SETBARCOLOR, 0, CLR_DEFAULT);
+				SendMessage(progBar_, PBM_SETSTATE, PBST_NORMAL, 0);
 			}
 		}
 	}
@@ -245,57 +280,138 @@ string PianoToMidi_Win::Convert(LPCTSTR mediaFile)
 	return fileA;
 }
 
+void PianoToMidi_Win::OnSize(const int cx, const int cy)
+{
+	SetWindowPos(calcSpectr_, nullptr,
+		(cx - calcSpectrWidth_) / 2, edge_,
+		0, 0, SWP_NOSIZE | SWP_NOZORDER);
+
+	SetWindowPos(spectrTitle_, nullptr,
+		(cx - spectrTitleWidth_) / 2, calcSpectrHeight_ + 2 * edge_,
+		0, 0, SWP_NOSIZE | SWP_NOZORDER);
+
+
+	RECT rect, newRect;
+	GetWindowRect(radioGroup_, &rect);
+	SetWindowPos(radioGroup_, nullptr,
+		(cx - spectrTitleWidth_) / 2 - radioGroupWidth_ - edge_, calcSpectrHeight_ + spectrTitleHeight_ - radioGroupHeight_ + 3 * edge_,
+		0, 0, SWP_NOSIZE | SWP_NOZORDER);
+	GetWindowRect(radioGroup_, &newRect);
+	const auto deltaX(newRect.left - rect.left), deltaY(newRect.top - rect.top);
+
+	GetWindowRect(radioCqt_, &rect);
+	ScreenToClient(hDlg_, reinterpret_cast<LPPOINT>(&rect));
+	SetWindowPos(radioCqt_, nullptr,
+		rect.left + deltaX, rect.top + deltaY,
+		0, 0, SWP_NOSIZE | SWP_NOZORDER);
+
+	GetWindowRect(radioMel_, &rect);
+	ScreenToClient(hDlg_, reinterpret_cast<LPPOINT>(&rect));
+	SetWindowPos(radioMel_, nullptr,
+		rect.left + deltaX, rect.top + deltaY,
+		0, 0, SWP_NOSIZE | SWP_NOZORDER);
+
+
+	spectrWidth_ = cx - 2 * edge_;
+	spectrHeight_ = cy / 2 - calcSpectrHeight_ - spectrTitleHeight_ - 3 * edge_;
+	SetWindowPos(spectr_, nullptr,
+		edge_, calcSpectrHeight_ + spectrTitleHeight_ + 3 * edge_,
+		spectrWidth_, spectrHeight_, SWP_NOZORDER);
+
+	SetWindowPos(convert_, nullptr,
+		(cx - convetWidth_) / 2, cy / 2 + edge_,
+		0, 0, SWP_NOSIZE | SWP_NOZORDER);
+
+	SetWindowPos(progBar_, nullptr, edge_,
+		cy / 2 + convertHeight_ + 2 * edge_,
+		cx - 2 * edge_, progBarHeight_, SWP_NOZORDER);
+
+	SetWindowPos(spectrLog_, nullptr, edge_,
+		cy / 2 + convertHeight_ + progBarHeight_ + 3 * edge_, cx - 2 * edge_,
+		cy / 2 - convertHeight_ - progBarHeight_ - 4 * edge_, SWP_NOZORDER);
+
+	InvalidateRect(hDlg_, nullptr, true);
+}
+
+void PianoToMidi_Win::SpecType(const bool isCqt)
+{
+	isCqt_ = isCqt;
+	OnPaint();
+	InvalidateRect(hDlg_, nullptr, true);
+}
+
 void PianoToMidi_Win::OnPaint() const
 {
-	CanvasGdi_Spectrum canvas(hDlg_);
-	if (media_->GetCqt().empty()) return;
+	using namespace Gdiplus;
 
-	const auto cqt(media_->GetCqt());
-	const auto cqtSize(min(static_cast<size_t>(spectrWidth_), cqt.size() / media_->GetNumBins()));
+	CanvasGdi_Spectrum canvasDlg(hDlg_);
+
+	if (isCqt_ ? media_->GetCqt().empty() : media_->GetMel().empty()) return;
+
+	const auto spec(isCqt_ ? media_->GetCqt() : media_->GetMel());
+	const auto nBins(isCqt_ ? media_->GetNumBins() : media_->nMels),
+		specSize(min(static_cast<size_t>(spectrWidth_), spec.size() / nBins));
 	wostringstream wos;
-	if (cqtSize == static_cast<size_t>(spectrWidth_)) wos << TEXT("SPECTROGRAM OF THE FIRST ")
-		<< media_->GetMidiSeconds() * cqtSize * media_->GetNumBins() / cqt.size() << TEXT(" SECONDS:");
+	if (specSize == static_cast<size_t>(spectrWidth_)) wos << TEXT("SPECTROGRAM OF THE FIRST ")
+		<< media_->GetMidiSeconds() * specSize * nBins / spec.size() << TEXT(" SECONDS:");
 	else wos << TEXT("SPECTROGRAM OF ALL THE ") << media_->GetMidiSeconds() << TEXT(" SECONDS:");
 	Static_SetText(spectrTitle_, wos.str().c_str());
 
 	if (not toRepaint_) return;
 
-	const auto binWidth(spectrWidth_ / static_cast<LONG>(cqtSize));
-	const auto binsPerPixel((media_->GetNumBins() - 1) / spectrHeight_ + 1);
-	const auto cqtMax(*max_element(cqt.cbegin(), cqt.cbegin()
-		+ static_cast<ptrdiff_t>(cqtSize * media_->GetNumBins())));
-
 	const BitmapCompatible hBitmap(spectr_, spectrWidth_, spectrHeight_);
 
-	const auto bottom((spectrHeight_ + (media_->GetNumBins() / binsPerPixel)) / 2);
-	for (size_t i(0); i < cqtSize; ++i)
-		for (size_t j(0); j < media_->GetNumBins() / binsPerPixel; ++j)
-		{
-			const auto bin(accumulate(cqt.cbegin() + static_cast<ptrdiff_t>(i * media_->GetNumBins()
-				+ j * binsPerPixel), cqt.cbegin() + static_cast<ptrdiff_t>(i * media_->GetNumBins()
-					+ (j + 1) * binsPerPixel), 0.f) * 5 / cqtMax / binsPerPixel);
-			assert(bin >= 0 and bin <= 5 and "Wrong cqt-bin value");
-			SetPixelV(hBitmap, static_cast<int>(i), static_cast<int>(bottom - j),
-				bin < 1 ? RGB(0, 0, bin * 0xFF) : bin < 2 ? RGB(0, (bin - 1) * 0xFF, 0xFF) :
-				bin < 3 ? RGB(0, 0xFF, 0xFF * (3 - bin)) : bin < 4
-				? RGB((bin - 4) * 0xFF, 0xFF, 0) : RGB(0xFF, 0xFF * (5 - bin), 0));
-		}
+	ULONG_PTR token;
+	GdiplusStartupInput gdiInput;
+	GdiplusStartup(&token, &gdiInput, nullptr);
 
-	if (media_->GetNotes().empty()) return;
+	Graphics gf(hBitmap);
+	const auto binsPerPixel((nBins - 1) / spectrHeight_ + 1);
+	const auto pixelsPerBin(max(1.f, (spectrHeight_ - 1) / static_cast<REAL>(nBins)));
+	gf.TranslateTransform(0, (spectrHeight_ + nBins / binsPerPixel * pixelsPerBin) / 2);
+	gf.ScaleTransform(1, pixelsPerBin);
 
-	for (size_t i(0); i < media_->GetOnsetFrames().size(); ++i)
+	const auto specMinMax(minmax_element(spec.cbegin(), spec.cbegin() + static_cast<ptrdiff_t>(specSize * nBins)));
+	for (size_t i(0); i < specSize; ++i) for (size_t j(0); j < nBins / binsPerPixel; ++j)
 	{
-		const auto onset(media_->GetOnsetFrames().at(i));
-		if (onset > cqtSize) break;
+		const auto bin((accumulate(spec.cbegin() + static_cast<ptrdiff_t>(i * nBins
+			+ j * binsPerPixel), spec.cbegin() + static_cast<ptrdiff_t>(i * nBins
+				+ (j + 1) * binsPerPixel), 0.f) / binsPerPixel - *specMinMax.first) / (*specMinMax.second - *specMinMax.first) * 5);
+		assert(bin >= 0 and bin <= 5 and "Wrong cqt-bin value");
+		const SolidBrush brush(bin < 1 ? Gdiplus::Color(0, 0, static_cast<BYTE>(bin * 0xFF))
+			: bin < 2 ? Gdiplus::Color(0, static_cast<BYTE>((bin - 1) * 0xFF), 0xFF)
+			: bin < 3 ? Gdiplus::Color(0, 0xFF, static_cast<BYTE>(0xFF * (3 - bin)))
+			: bin < 4 ? Gdiplus::Color(static_cast<BYTE>((bin - 4) * 0xFF), 0xFF, 0)
+			: Gdiplus::Color(0xFF, static_cast<BYTE>(0xFF * (5 - bin)), 0));
+		gf.FillRectangle(&brush, static_cast<int>(i), -static_cast<int>(j), 1, 1);
+	}
 
-		for (const auto& note : media_->GetNotes().at(i))
+	const auto logScale((isCqt_ ? nBins / 88.f : 1.f) / binsPerPixel);
+	if (not isCqt_)
+	{
+		const Pen pen(static_cast<ARGB>(Gdiplus::Color::Red), 1);
+		for (const auto& octave : media_->GetMelOctaves())
 		{
-			const auto bin(static_cast<int>(bottom
-				- note.first * media_->GetNumBins() / 88 / binsPerPixel));
-			SelectObject(hBitmap, GetStockPen(BLACK_PEN));
-			SelectObject(hBitmap, GetStockBrush(WHITE_BRUSH));
-			Ellipse(hBitmap, static_cast<int>(onset) - 5, bin - 5,
-				static_cast<int>(onset) + 5, bin + 5);
+			const auto bin(-logScale * octave);
+			gf.DrawLine(&pen, 0.f, bin + 1, static_cast<REAL>(specSize), bin);
 		}
 	}
+
+	if (media_->GetOnsets().empty()) return;
+
+	const Pen pen(static_cast<ARGB>(Gdiplus::Color::Black), 1);
+	const SolidBrush brush(static_cast<ARGB>(Gdiplus::Color::White));
+	const auto DrawNotes([this, specSize, pixelsPerBin, logScale, &gf, &pen, &brush](const vector<float>& notes, const bool toFill, const float size)
+		{
+			for (size_t i(0); i < min(specSize, notes.size() / 88); ++i) for (size_t j(0); j < 88; ++j)
+			{
+				if (notes.at(i * 88 + j) < .5) continue;
+
+				const auto bin(-logScale * (isCqt_ ? j : media_->GetMelNoteIndices().at(j)));
+				if (toFill) gf.FillEllipse(&brush, static_cast<REAL>(i), bin - size / pixelsPerBin / 2 + 1, size, size / pixelsPerBin);
+				gf.DrawEllipse(&pen, static_cast<REAL>(i), bin - size / pixelsPerBin / 2 + 1, size, size / pixelsPerBin);
+			}
+		});
+	DrawNotes(media_->GetActives(), false, 4);
+	DrawNotes(media_->GetOnsets(), true, 10);
 }

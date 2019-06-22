@@ -29,7 +29,7 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 	hopLen_(hopLen), hopLenReduced_(hopLen),
 	rateInitial_(audio->GetSampleRate()),
 	qBasis_(make_unique<CqtBasis>(octave, filtScale, norm, window)),
-	stft_(nullptr), audio_(audio)
+	stft_(nullptr), audio_(audio), cqt_(make_shared<AlignedVector<float>>())
 {
 	/* The recursive sub-sampling method described by
 	Schoerkhuber, Christian, and Anssi Klapuri
@@ -104,13 +104,13 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 	Scale(rateInitial_, toScale);
 
 	// Eventually, we can flatten the array, and get rid of temporary 2D-buffer:
-	cqt_.resize(cqtResp_.size() * cqtResp_.front().size());
+	cqt_->resize(cqtResp_.size() * cqtResp_.front().size());
 	AlignedVector<float>::iterator unusedIter;
 	for (size_t i(0); i < cqtResp_.size(); ++i) unusedIter = copy(cqtResp_.at(i).cbegin(),
-		cqtResp_.at(i).cend(), cqt_.begin() + static_cast<ptrdiff_t>(i * cqtResp_.at(i).size()));
+		cqtResp_.at(i).cend(), cqt_->begin() + static_cast<ptrdiff_t>(i * cqtResp_.at(i).size()));
 
 	MKL_Simatcopy('R', 'T', nBins, cqtResp_.front().size(),
-		1, cqt_.data(), cqtResp_.front().size(), nBins);
+		1, cqt_->data(), cqtResp_.front().size(), nBins);
 
 	stft_.reset(); // do not have to do it here, but will not need it anymore,
 	// so we can release it, because it is not const, and it is "unique" pointer
@@ -215,56 +215,4 @@ void ConstantQ::Scale(const int rateInit, const bool toScale)
 
 	for (size_t i(0); i < cqtResp_.size(); ++i) CHECK_IPP_RESULT(ippsDivC_32f_I(
 		qBasis_->GetLengths().at(i), cqtResp_.at(i).data(), static_cast<int>(cqtResp_.at(i).size())));
-}
-
-
-void ConstantQ::Amplitude2power() { CHECK_IPP_RESULT(
-	ippsSqr_32f_I(cqt_.data(), static_cast<int>(cqt_.size()))); }
-
-void Power2db_helper(float* spectr, const int size,
-	const float ref, const float aMin, const float topDb)
-{
-	assert(*min_element(spectr, spectr + size) >= 0 and
-		"Did you forget to square CQT-amplitudes to convert them to power?");
-	assert(ref >= 0 and aMin > 0 and "Reference and minimum powers must be strictly positive");
-
-	// Scale power relative to 'ref' in a numerically stable way:
-	// S_db = 10 * log10(S / ref) ~= 10 * log10(S) - 10 * log10(ref)
-	// Zeros in the output correspond to positions where S == ref
-	CHECK_IPP_RESULT(ippsThreshold_LT_32f_I(spectr, size, aMin));
-	CHECK_IPP_RESULT(ippsLog10_32f_A11(spectr, spectr, size));
-	CHECK_IPP_RESULT(ippsMulC_32f_I(10, spectr, size));
-	CHECK_IPP_RESULT(ippsSubC_32f_I(10 * log10(max(aMin, ref)), spectr, size));
-
-	assert(topDb >= 0 and "top_db must be non-negative");
-	if (topDb) // Threshold the output at topDb below the peak:
-	{
-		Ipp32f maxDb;
-		CHECK_IPP_RESULT(ippsMax_32f(spectr, size, &maxDb));
-		CHECK_IPP_RESULT(ippsThreshold_LT_32f_I(spectr, size, maxDb - topDb));
-	}
-}
-
-void ConstantQ::Power2db(const float ref, const float aMin, const float topDb)
-{ Power2db_helper(cqt_.data(), static_cast<int>(cqt_.size()), ref, aMin, topDb); }
-
-void ConstantQ::TrimSilence(const float aMin, const float topDb)
-{
-	vector<Ipp32f> mse(cqt_.size() / nBins_); // Mean-square energy:
-	for (size_t i(0); i < mse.size(); ++i) CHECK_IPP_RESULT(ippsMean_32f(cqt_.data()
-		+ static_cast<ptrdiff_t>(i * nBins_), static_cast<int>(nBins_), &mse.at(i), ippAlgHintFast));
-
-	Ipp32f mseMax;
-	CHECK_IPP_RESULT(ippsMax_32f(mse.data(), static_cast<int>(mse.size()), &mseMax));
-	Power2db_helper(mse.data(), static_cast<int>(mse.size()), mseMax, aMin, 0);
-
-	const auto iterStart(find_if(mse.cbegin(), mse.cend(),
-		[topDb](Ipp32f mse_i) { return mse_i > -topDb; }));
-	const auto iterEnd(find_if(mse.crbegin(), mse.crend(),
-		[topDb](Ipp32f mse_i) { return mse_i > -topDb; }));
-
-	const auto unusedIter(cqt_.erase(cqt_.cbegin(),
-		cqt_.cbegin() + (iterStart - mse.cbegin()) * static_cast<ptrdiff_t>(nBins_)));
-	cqt_.resize(cqt_.size() - (iterEnd - mse.crbegin()) * static_cast<ptrdiff_t>(nBins_));
-	assert(cqt_.size() % nBins_ == 0 and "CQT is not rectangular after silence trimming");
 }

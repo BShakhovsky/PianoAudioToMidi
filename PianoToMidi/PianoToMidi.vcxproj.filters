@@ -25,12 +25,6 @@
     <Filter Include="Source Files\Spectrums">
       <UniqueIdentifier>{54882ce4-97bd-4be7-bd41-8dc87153cabc}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Keras CNN">
-      <UniqueIdentifier>{5a9aab5a-ad5d-45fd-8c14-94c71c3e6601}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\Keras CNN">
-      <UniqueIdentifier>{ccdbd9a6-997b-46ac-bb97-ba2f3d9ebea4}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\Wrappers">
       <UniqueIdentifier>{fa9ca301-2448-4b39-bf0c-6791c54a5045}</UniqueIdentifier>
     </Filter>
@@ -39,6 +33,18 @@
     </Filter>
     <Filter Include="Header Files\Wrappers\WinApi">
       <UniqueIdentifier>{9e2db454-7023-4978-b7f6-3fe73547153c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Keras RNN">
+      <UniqueIdentifier>{ccdbd9a6-997b-46ac-bb97-ba2f3d9ebea4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Keras RNN">
+      <UniqueIdentifier>{5a9aab5a-ad5d-45fd-8c14-94c71c3e6601}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Spectrums\Utilities">
+      <UniqueIdentifier>{7d219d96-ce56-4ac2-96a0-a8f48412fe18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Spectrums\Utilities">
+      <UniqueIdentifier>{f98630ef-62c5-4691-a38d-b43893396900}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -60,19 +66,10 @@
     <ClInclude Include="MonoResampler.h">
       <Filter>Header Files\FFmpeg</Filter>
     </ClInclude>
-    <ClInclude Include="AlignedVector.h">
-      <Filter>Header Files\Spectrums</Filter>
-    </ClInclude>
-    <ClInclude Include="IntelCheckStatus.h">
-      <Filter>Header Files\Spectrums</Filter>
-    </ClInclude>
     <ClInclude Include="ConstantQ.h">
       <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
     <ClInclude Include="CqtBasis.h">
-      <Filter>Header Files\Spectrums</Filter>
-    </ClInclude>
-    <ClInclude Include="CqtError.h">
       <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
     <ClInclude Include="ShortTimeFourier.h">
@@ -84,16 +81,10 @@
     <ClInclude Include="HarmonicPercussive.h">
       <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
-    <ClInclude Include="KerasCnn.h">
-      <Filter>Header Files\Keras CNN</Filter>
-    </ClInclude>
     <ClInclude Include="KerasError.h">
-      <Filter>Header Files\Keras CNN</Filter>
+      <Filter>Header Files\Keras RNN</Filter>
     </ClInclude>
     <ClInclude Include="Tempogram.h">
-      <Filter>Header Files\Spectrums</Filter>
-    </ClInclude>
-    <ClInclude Include="EnumFuncs.h">
       <Filter>Header Files\Spectrums</Filter>
     </ClInclude>
     <ClInclude Include="MidiOutError.h">
@@ -120,6 +111,33 @@
     <ClInclude Include="CanvasGdi_Spectrum.h">
       <Filter>Header Files\Wrappers\WinApi</Filter>
     </ClInclude>
+    <ClInclude Include="MelTransform.h">
+      <Filter>Header Files\Spectrums</Filter>
+    </ClInclude>
+    <ClInclude Include="KerasRnn.h">
+      <Filter>Header Files\Keras RNN</Filter>
+    </ClInclude>
+    <ClInclude Include="AlignedVector.h">
+      <Filter>Header Files\Spectrums\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="CqtError.h">
+      <Filter>Header Files\Spectrums\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="EnumFuncs.h">
+      <Filter>Header Files\Spectrums\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="IntelCheckStatus.h">
+      <Filter>Header Files\Spectrums\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="MelError.h">
+      <Filter>Header Files\Spectrums\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="SpecPostProc.h">
+      <Filter>Header Files\Spectrums\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="MyError.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -130,12 +148,6 @@
     </ClCompile>
     <ClCompile Include="MonoResampler.cpp">
       <Filter>Source Files\FFmpeg</Filter>
-    </ClCompile>
-    <ClCompile Include="FFmpegError.cpp">
-      <Filter>Source Files\FFmpeg</Filter>
-    </ClCompile>
-    <ClCompile Include="IntelCheckStatus.cpp">
-      <Filter>Source Files\Spectrums</Filter>
     </ClCompile>
     <ClCompile Include="ConstantQ.cpp">
       <Filter>Source Files\Spectrums</Filter>
@@ -152,13 +164,7 @@
     <ClCompile Include="HarmonicPercussive.cpp">
       <Filter>Source Files\Spectrums</Filter>
     </ClCompile>
-    <ClCompile Include="KerasCnn.cpp">
-      <Filter>Source Files\Keras CNN</Filter>
-    </ClCompile>
     <ClCompile Include="Tempogram.cpp">
-      <Filter>Source Files\Spectrums</Filter>
-    </ClCompile>
-    <ClCompile Include="EnumFuncs.cpp">
       <Filter>Source Files\Spectrums</Filter>
     </ClCompile>
     <ClCompile Include="PianoToMidi.cpp">
@@ -169,6 +175,21 @@
     </ClCompile>
     <ClCompile Include="BitmapCompatible.cpp">
       <Filter>Source Files\Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="MelTransform.cpp">
+      <Filter>Source Files\Spectrums</Filter>
+    </ClCompile>
+    <ClCompile Include="KerasRnn.cpp">
+      <Filter>Source Files\Keras RNN</Filter>
+    </ClCompile>
+    <ClCompile Include="EnumFuncs.cpp">
+      <Filter>Source Files\Spectrums\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="IntelCheckStatus.cpp">
+      <Filter>Source Files\Spectrums\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="SpecPostProc.cpp">
+      <Filter>Source Files\Spectrums\Utilities</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

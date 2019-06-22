@@ -21,9 +21,10 @@ private:
 
 	AlignedVector<std::complex<float>> stft_;
 	size_t nFrames_, nFreqs_;
-#ifdef NDEBUG
-	const byte padding_[4] = { 0 };
+#if not defined _WIN64 and defined NDEBUG
+	const byte pad_[4]{ 0 };
 #endif
+
 	ShortTimeFourier(const ShortTimeFourier&) = delete;
 	const ShortTimeFourier& operator=(const ShortTimeFourier&) = delete;
 };

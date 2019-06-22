@@ -17,9 +17,8 @@ MonoResampler::~MonoResampler()
 	swr_free(&context_);
 }
 
-pair<const uint8_t*, size_t> MonoResampler::Resample(uint8_t* srcData, const size_t srcBytes,
-	int srcChannels, const int srcRate, const int dstRate,
-	const AVSampleFormat srcSampleFmt, const AVSampleFormat dstSampleFmt)
+pair<uint8_t*, size_t> MonoResampler::FFmpegResample(uint8_t* srcData, const size_t srcBytes, const int srcChannels,
+	const int srcRate, const int dstRate, const AVSampleFormat srcSampleFmt, const AVSampleFormat dstSampleFmt)
 {
 	assert(not srcData_ and not dstData_ and
 		"Resample must be called just once, then destructor should deallocate all internal data");
@@ -62,4 +61,68 @@ pair<const uint8_t*, size_t> MonoResampler::Resample(uint8_t* srcData, const siz
 	if (dstBytes < 0) throw FFmpegError("Could not get sample buffer size");
 
 	return make_pair(*dstData_, static_cast<size_t>(dstBytes));
+}
+
+vector<float> MonoResampler::ResampyResample(const vector<float>& srcData, const int srcRate, const int dstRate) const
+{
+	using placeholders::_1;
+	using boost::filesystem::exists;
+	using namespace boost::archive;
+
+	assert(srcData_ and dstData_ and "FFmpegResample must have been called before ResampyResample");
+	assert(srcRate > 0 and dstRate > 0 and "Sample rates must be positive");
+	if (srcRate == dstRate) return srcData;
+
+	const auto ratio(static_cast<double>(dstRate) / srcRate);
+	const auto shape(static_cast<size_t>(srcData.size() * ratio));
+	if (shape < 1)
+	{
+		ostringstream os;
+		os << "Input signal length = " << srcData.size() << " is too small to resample from " << srcRate << " --> " << dstRate;
+		throw FFmpegError(os.str().c_str());
+	}
+
+	static array<double, 32'769> interpWin;
+	if (all_of(interpWin.cbegin(), interpWin.cend(), bind(equal_to<double>(), 0, _1)))
+	{
+		const auto interpWinFile("Resample Interp Win.dat");
+		if (not exists(interpWinFile)) throw FFmpegError((string("Could not find data file: \"") + interpWinFile + "\". Please, put it back").c_str());
+		ifstream ifs(interpWinFile, ifstream::binary);
+		try { binary_iarchive(ifs) >> interpWin; }
+		catch (const archive_exception& e) { throw FFmpegError(e.what()); }
+	}
+
+	auto interpWinScaled(make_unique<array<double, 32'769>>()), interp_delta(make_unique<array<double, 32'769>>());
+	if (ratio < 1) transform(interpWin.cbegin(), interpWin.cend(), interpWinScaled->begin(), bind(multiplies<double>(), ratio, _1));
+	adjacent_difference(next(interpWinScaled->cbegin()), interpWinScaled->cend(), interp_delta->begin());
+	interp_delta->front() = interpWinScaled->at(1) - interpWinScaled->front();
+	interp_delta->back() = 0;
+
+	vector<double> result(shape);
+	const auto scale(min(1., ratio));
+	const auto num_table(512), // precision (number of samples between zero-crossings of the fitler)
+		index_step(static_cast<int>(scale * num_table));
+	double time_register(0);
+	for (size_t t(0); t < result.size(); ++t)
+	{
+		const auto n(static_cast<size_t>(time_register)); // Grab the top bits as an index to the input buffer
+
+		auto frac(scale * (time_register - n)), // Grab the fractional component of the time index
+			index_frac(frac * num_table);
+		auto offset(static_cast<int>(index_frac));
+		for (size_t i(0); i < min(n + 1, (interpWinScaled->size() - offset) / index_step); ++i) // Left wing of the filter response
+			result.at(t) += (interpWinScaled->at(offset + i * index_step) + (index_frac - offset) /*eta = interpolation factor*/ * interp_delta->at(offset + i * index_step)) // weight
+				* srcData.at(n - i);
+
+		index_frac = (scale - frac) /*Invert P*/ * num_table;
+		offset = static_cast<int>(index_frac);
+		for (size_t k(0); k < min(srcData.size() - n - 1, (interpWinScaled->size() - offset) / index_step); ++k) // Right wing of the filter response 
+			result.at(t) += (interpWinScaled->at(offset + k * index_step) + (index_frac - offset) /*eta = interpolation factor*/ * interp_delta->at(offset + k * index_step)) // weight
+				* srcData.at(n + k + 1);
+			
+		time_register += 1 / ratio;
+	}
+	result.resize(min(result.size(), static_cast<size_t>(ceil(srcData.size() * ratio))));
+
+	return move(vector<float>(result.cbegin(), result.cend()));
 }

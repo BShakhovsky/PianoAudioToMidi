@@ -22,6 +22,7 @@ private:
 	{
 		TCHAR fileName[MAX_PATH] = TEXT("");
 		DragQueryFile(hDrop, 0, fileName, sizeof fileName / sizeof *fileName);
+#pragma warning(suppress:4710) // Function not inlined
 		OpenAudioFile(fileName);
 		DragFinish(hDrop);
 	}

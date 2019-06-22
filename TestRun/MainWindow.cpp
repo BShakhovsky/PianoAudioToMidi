@@ -8,6 +8,8 @@ HINSTANCE MainWindow::hInstance = nullptr;
 HWND MainWindow::hWndMain = nullptr;
 TCHAR MainWindow::path[] = TEXT("");
 
+#pragma warning(push)
+#pragma warning(disable:4710) // OpenAudioFile(const wchar_t*): Function not inlined
 inline void MainWindow::OpenAudioFile(LPCTSTR fileName)
 {
 	Spectrogram::mediaFile = fileName;
@@ -39,6 +41,7 @@ inline void MainWindow::OnCommand(const HWND hWnd, const int id, const HWND, con
 	case IDM_EXIT:	DestroyWindow(hWnd);												break;
 	}
 }
+#pragma warning(pop)
 
 LRESULT CALLBACK MainWindow::WndProc(const HWND hWnd,
 	const UINT msg, const WPARAM wParam, const LPARAM lParam)

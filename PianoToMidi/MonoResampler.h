@@ -1,4 +1,6 @@
 #pragma once
+#pragma warning(push)
+#pragma warning(disable:4710) // FFmpegError(const char*): function not inlined
 
 class MonoResampler
 {
@@ -13,9 +15,14 @@ public:
 #pragma warning(pop)
 	~MonoResampler();
 
-	std::pair<const uint8_t*, size_t> Resample(uint8_t* srcData, size_t srcBytes, int srcChannels,
+	std::pair<uint8_t*, size_t> FFmpegResample(uint8_t* srcData, size_t srcBytes, int srcChannels,
 		int srcRate, int dstRate, AVSampleFormat srcSampleFmt, AVSampleFormat dstSampleFmt);
+
+	// Manual resample, currently not used, because FFmpeg is faster:
+	std::vector<float> ResampyResample(const std::vector<float>& srcData, int srcRate, int dstRate) const;
 private:
 	SwrContext* context_;
 	uint8_t **srcData_, **dstData_;
 };
+
+#pragma warning(pop)

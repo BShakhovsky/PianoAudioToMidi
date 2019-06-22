@@ -74,7 +74,7 @@ void Aggregate(const float* src, const int srcNrows, const int rowStart,
 	case AGGREGATE::MEDIAN:
 	{
 		vector<double> destDouble(static_cast<size_t>(srcNrows)),
-			srcDouble(src, src + srcNrows * srcWidth);
+			srcDouble(src, src + static_cast<ptrdiff_t>(srcNrows) * srcWidth);
 
 		Ipp32u buffSize;
 		CHECK_IPP_RESULT(ippiFilterMedianGetBufferSize_64f({ 1, static_cast<int>(
