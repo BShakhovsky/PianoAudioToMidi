@@ -54,9 +54,15 @@ PianoToMidi_Win::PianoToMidi_Win(const HWND hDlg, const int calcSpectr, const in
 {}
 PianoToMidi_Win::~PianoToMidi_Win() {}
 
+string Utf8Decode(LPCWSTR strW) {
+	string strA(WideCharToMultiByte(CP_UTF8, 0, strW, -1, nullptr, 0, nullptr, nullptr), '\0');
+	WideCharToMultiByte(CP_UTF8, 0, strW, -1, strA.data(), strA.size(), nullptr, nullptr);
+	return move(strA);
+}
+
 void PianoToMidi_Win::FFmpegDecode(LPCWSTR fileNameW)
 {
-	FFmpegDecode(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(fileNameW).c_str());
+	FFmpegDecode(Utf8Decode(fileNameW).c_str());
 }
 void PianoToMidi_Win::FFmpegDecode(LPCSTR aFile)
 {
@@ -256,14 +262,13 @@ string PianoToMidi_Win::Convert(LPCTSTR mediaFile)
 	}
 
 #ifdef UNICODE
-	const wstring fileW(fileName.lpstrFile);
-	string fileA(fileW.cbegin(), fileW.cend());
+	const auto fileA(Utf8Decode(fileName.lpstrFile));
 #else
 	string fileA(fileName.lpstrFile);
 #endif
 	try
 	{
-		media_->WriteMidi(fileA.c_str());
+		media_->WriteMidi(fileName.lpstrFile, fileA);
 		log_ += "\r\n" + fileA + " saved.";
 		log_ = regex_replace(log_, regex("\r?\n\r?"), "\r\n"); // just in case
 		SetWindowTextA(spectrLog_, log_.c_str());
@@ -367,16 +372,16 @@ void PianoToMidi_Win::OnPaint() const
 
 	Graphics gf(hBitmap);
 	const auto binsPerPixel((nBins - 1) / spectrHeight_ + 1);
-	const auto pixelsPerBin(max(1.f, (spectrHeight_ - 1) / static_cast<REAL>(nBins)));
-	gf.TranslateTransform(0, (spectrHeight_ + nBins / binsPerPixel * pixelsPerBin) / 2);
+	const auto pixelsPerBin(max(1.f, Divide<REAL>(spectrHeight_ - 1, nBins)));
+	gf.TranslateTransform(0, (static_cast<float>(spectrHeight_) + Multiply(static_cast<unsigned long>(nBins) / binsPerPixel, pixelsPerBin)) / 2);
 	gf.ScaleTransform(1, pixelsPerBin);
 
 	const auto specMinMax(minmax_element(spec.cbegin(), spec.cbegin() + static_cast<ptrdiff_t>(specSize * nBins)));
 	for (size_t i(0); i < specSize; ++i) for (size_t j(0); j < nBins / binsPerPixel; ++j)
 	{
-		const auto bin((accumulate(spec.cbegin() + static_cast<ptrdiff_t>(i * nBins
+		const auto bin((Divide(accumulate(spec.cbegin() + static_cast<ptrdiff_t>(i * nBins
 			+ j * binsPerPixel), spec.cbegin() + static_cast<ptrdiff_t>(i * nBins
-				+ (j + 1) * binsPerPixel), 0.f) / binsPerPixel - *specMinMax.first) / (*specMinMax.second - *specMinMax.first) * 5);
+				+ (j + 1) * binsPerPixel), 0.f), binsPerPixel) - *specMinMax.first) / (*specMinMax.second - *specMinMax.first) * 5);
 		assert(bin >= 0 and bin <= 5 and "Wrong cqt-bin value");
 		const SolidBrush brush(bin < 1 ? Gdiplus::Color(0, 0, static_cast<BYTE>(bin * 0xFF))
 			: bin < 2 ? Gdiplus::Color(0, static_cast<BYTE>((bin - 1) * 0xFF), 0xFF)
@@ -386,13 +391,13 @@ void PianoToMidi_Win::OnPaint() const
 		gf.FillRectangle(&brush, static_cast<int>(i), -static_cast<int>(j), 1, 1);
 	}
 
-	const auto logScale((isCqt_ ? nBins / 88.f : 1.f) / binsPerPixel);
+	const auto logScale(Divide(isCqt_ ? Divide(nBins, 88) : 1.f, binsPerPixel));
 	if (not isCqt_)
 	{
 		const Pen pen(static_cast<ARGB>(Gdiplus::Color::Red), 1);
 		for (const auto& octave : media_->GetMelOctaves())
 		{
-			const auto bin(-logScale * octave);
+			const auto bin(-Multiply(logScale, octave));
 			gf.DrawLine(&pen, 0.f, bin + 1, static_cast<REAL>(specSize), bin);
 		}
 	}
@@ -401,13 +406,13 @@ void PianoToMidi_Win::OnPaint() const
 
 	const Pen pen(static_cast<ARGB>(Gdiplus::Color::Black), 1);
 	const SolidBrush brush(static_cast<ARGB>(Gdiplus::Color::White));
-	const auto DrawNotes([this, specSize, pixelsPerBin, logScale, &gf, &pen, &brush](const vector<float>& notes, const bool toFill, const float size)
+	const auto DrawNotes([this, specSize, pixelsPerBin, logScale, &gf, &pen, &brush](const fdeep::float_vec& notes, const bool toFill, const float size)
 		{
 			for (size_t i(0); i < min(specSize, notes.size() / 88); ++i) for (size_t j(0); j < 88; ++j)
 			{
 				if (notes.at(i * 88 + j) < .5) continue;
 
-				const auto bin(-logScale * (isCqt_ ? j : media_->GetMelNoteIndices().at(j)));
+				const auto bin(-Multiply(logScale, isCqt_ ? j : media_->GetMelNoteIndices().at(j)));
 				if (toFill) gf.FillEllipse(&brush, static_cast<REAL>(i), bin - size / pixelsPerBin / 2 + 1, size, size / pixelsPerBin);
 				gf.DrawEllipse(&pen, static_cast<REAL>(i), bin - size / pixelsPerBin / 2 + 1, size, size / pixelsPerBin);
 			}

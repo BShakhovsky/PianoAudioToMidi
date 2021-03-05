@@ -16,7 +16,7 @@ using boost::alignment::is_aligned;
 
 CqtBasis::CqtBasis(const int octave, const float scale,
 	const NORM_TYPE norm, const ConstantQ::CQT_WINDOW window)
-	: octave_(octave), Q_(scale / (pow(2.f, 1.f / octave_) - 1)),
+	: octave_(octave), Q_(scale / (pow(2.f, Divide(1, octave_)) - 1)),
 	NormFunc_(GetNormFuncComplex(norm)), window_(window),
 	nFft_(0)
 {
@@ -36,7 +36,7 @@ void CqtBasis::CalcFrequencies(const int rate, const float fMin, const size_t nB
 	assert(nBins > 0 && "Number of bins must be positive");
 
 	freqs_.resize(nBins);
-	for (size_t i(0); i < nBins; ++i) freqs_.at(i) = fMin * pow(2.f, static_cast<float>(i) / octave_);
+	for (size_t i(0); i < nBins; ++i) freqs_.at(i) = fMin * pow(2.f, Divide(i, octave_));
 	if (freqs_.back() * (1 + 0.5 * ConstantQ::WIN_BAND_WIDTH[static_cast<int>(window_)] / Q_) > rate / 2.)
 		throw CqtError("Filter pass-band lies beyond Nyquist");
 }
@@ -49,7 +49,7 @@ void CqtBasis::CalcLengths(const int rate, const float fMin, const size_t nBins)
 
 	// Fractional lengths of each filter:
 	lens_.resize(nBins);
-	const auto unusedIter(transform(freqs_.cbegin(), freqs_.cend(), lens_.begin(), bind(divides<float>(), Q_ * rate, _1)));
+	const auto unusedIter(transform(freqs_.cbegin(), freqs_.cend(), lens_.begin(), bind(divides<float>(), Multiply(Q_, rate), _1)));
 	assert(lens_.front() == *max_element(lens_.cbegin(), lens_.cend()) &&
 		"Mistake in CQT-basis filter lengths");
 }
@@ -95,9 +95,9 @@ void CqtBasis::CalcFilters(const int rate, const float fMin,
 		/* Time-domain filter bank described by McVicar, Matthew
 		"A machine learning approach to automatic chord extraction."
 		Dissertation, University of Bristol. 2013.*/
-		for (size_t j(0); j <= lens_.at(i); ++j) // length will be ceil(cqLen)
-			filts_.at(i).at(j + offset) = exp(floor(j - lens_.at(i) / 2) / rate
-				* 2if * static_cast<float>(M_PI) * freqs_.at(i));
+		for (size_t j(0); static_cast<float>(j) <= lens_.at(i); ++j) // length will be ceil(cqLen)
+			filts_.at(i).at(j + offset) = exp(Divide(floor(static_cast<float>(j) - lens_.at(i) / 2), rate)
+				* 2if * Multiply(M_PI, freqs_.at(i)));
 
 		const auto buff(reinterpret_cast<Ipp32fc*>(filts_.at(i).data()) + offset);
 		const auto size(static_cast<int>(ceil(lens_.at(i))));
@@ -108,7 +108,7 @@ void CqtBasis::CalcFilters(const int rate, const float fMin,
 		Ipp32f norm32(0);
 		if (NormFunc_) CHECK_IPP_RESULT(NormFunc_(buff, size, &norm32));
 		assert(norm32 && "Norm factor not calculated");
-		CHECK_IPP_RESULT(ippsMulC_32fc_I({ lens_.at(i) / nFft_ / norm32, 0 }, buff, size));
+		CHECK_IPP_RESULT(ippsMulC_32fc_I({ Divide(lens_.at(i), nFft_) / norm32, 0 }, buff, size));
 
 		fft.perform(filts_.at(i).data(), filts_.at(i).data(), false);
 		filts_.at(i).resize(nFft_ / 2 + 1); // Retain only the non-negative frequencies

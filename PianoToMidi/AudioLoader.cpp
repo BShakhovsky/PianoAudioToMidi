@@ -94,8 +94,13 @@ int AudioLoader::DecodePacket() const
 {
 	char errStr[AV_ERROR_MAX_STRING_SIZE];
 	auto response(avcodec_send_packet(data_->codecContext, data_->packet));
-	if (response < 0) throw FFmpegError(("Could not send a packet to the decoder:\n"
-		+ string(av_make_error_string(errStr, sizeof errStr / sizeof *errStr, response))).c_str());
+	if (response < 0)
+	{
+		if (response == AVERROR_INVALIDDATA) {}
+		else if (response == AVERROR_EOF) return response;
+		else throw FFmpegError(("Could not send a packet to the decoder:\n"
+			+ string(av_make_error_string(errStr, sizeof errStr / sizeof * errStr, response))).c_str());
+	}
 	while (response >= 0)
 	{
 		FrameCodec frame(data_->frame);
@@ -108,8 +113,8 @@ int AudioLoader::DecodePacket() const
 		if (data_->codecContext->channels == 2) assert (data_->frame->linesize[1] == 0);
 		else assert(data_->codecContext->channels == 1);
 		// There could be discarded samples for MP3, so use linesize instead of nb_samples * nBlockAlign
-		const auto iter(data_->rawData.insert(data_->rawData.cend(),
-			data_->frame->extended_data[0], data_->frame->extended_data[0] + data_->frame->linesize[0]));
+		const auto iter(data_->rawData.insert(data_->rawData.cend(), data_->frame->extended_data[0],
+			data_->frame->extended_data[0] + data_->frame->linesize[0] / (data_->codec->id == AV_CODEC_ID_AAC ? 2 : 1)));
 	}
 	return 0;
 }

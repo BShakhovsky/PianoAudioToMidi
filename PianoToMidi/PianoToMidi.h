@@ -5,6 +5,8 @@
 #include "KerasError.h"
 #include "MidiOutError.h"
 
+// namespace fdeep { class float_vec; }
+
 class PianoToMidi
 {
 	static constexpr int nCqtBins = 3, rate = 16'000, nSeconds = 20;
@@ -33,15 +35,15 @@ public:
 	std::string KerasLoad(const std::string& currExePath) const;
 	WPARAM RnnProbabs() const;
 
-	const std::vector<float>& GetOnsets() const;
-	const std::vector<float>& GetActives() const;
+	const fdeep::float_vec& GetOnsets() const;
+	const fdeep::float_vec& GetActives() const;
 	const std::array<size_t, 8> & GetMelOctaves() const;
 	const std::array<size_t, 88> & GetMelNoteIndices() const;
 
 	std::string Gamma() const;
 	std::string KeySignature() const;
 
-	void WriteMidi(const char* fileName) const;
+	void WriteMidi(LPCTSTR fileName, std::string fileA) const;
 private:
 	std::vector<std::tuple<size_t, size_t, size_t, int>> CalcNoteIntervals() const;
 

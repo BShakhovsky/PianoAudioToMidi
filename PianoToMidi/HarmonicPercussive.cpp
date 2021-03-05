@@ -8,13 +8,14 @@
 #include "IntelCheckStatus.h"
 
 using namespace std;
+using namespace placeholders;
 
 void SoftMask(vector<float>* xInOut, const vector<float>& xRef, float power, bool splitZeros)
 {
 	assert(xInOut->size() == xRef.size() and "Input and reference arrays must have the same size");
-	assert(all_of(xInOut->cbegin(), xInOut->cend(), bind2nd(greater_equal<float>(), 0.f))
+	assert(all_of(xInOut->cbegin(), xInOut->cend(), bind(greater_equal<float>(), _1, 0.f))
 		and "Input mask elements must be non-negative");
-	assert(all_of(xRef.cbegin(), xRef.cend(), bind2nd(greater_equal<float>(), 0.f))
+	assert(all_of(xRef.cbegin(), xRef.cend(), bind(greater_equal<float>(), _1, 0.f))
 		and "Background reference elements must be non-negative");
 	assert(power > 0 and "Exponent for the Wiener filter must be strictly positive");
 
@@ -187,7 +188,7 @@ void HarmonicPercussive::OnsetPeaksDetect(const bool toBackTrack)
 {
 	percPeaks_.clear();
 	// Do we have any onsets to grab?
-	if (all_of(percEnv_.cbegin(), percEnv_.cend(), bind1st(equal_to<float>(), 0.f))) return;
+	if (all_of(percEnv_.cbegin(), percEnv_.cend(), bind(equal_to<float>(), _1, 0.f))) return;
 
 	// If onset envelope calculated with toDetrend=true, IIR filter may produce negative values.
 	// So, shift up (a common normalization step to make the threshold more consistent):
@@ -236,7 +237,7 @@ void HarmonicPercussive::OnsetPeaksDetect(const bool toBackTrack)
 
 
 	// 200ms (100ms before & after):
-	auto avgLen(static_cast<int>(ceil(.2f * cqt_->GetSampleRate() / cqt_->GetHopLength())));
+	auto avgLen(static_cast<int>(ceil(.2 * cqt_->GetSampleRate() / cqt_->GetHopLength())));
 	avgLen += avgLen % 2 + 1; // odd filter size, just in case
 	vector<float> percEnvSum(percEnv_); // Sums (--> means) over a sliding window
 	// No need to shift right here, because central anchor point is what we need
@@ -249,12 +250,12 @@ void HarmonicPercussive::OnsetPeaksDetect(const bool toBackTrack)
 		static_cast<int>(percEnvSum.size() * sizeof percEnvSum.front()), { static_cast<int>(
 			percEnvSum.size()), 1 }, { avgLen, 1 }, ippBorderConst, &borderVal, buff.data()));
 
-	const auto wait(static_cast<int>(ceil(.03f * cqt_->GetSampleRate() / cqt_->GetHopLength())));
+	const auto wait(static_cast<int>(ceil(.03 * cqt_->GetSampleRate() / cqt_->GetHopLength())));
 	for (size_t i(0); i < percEnv_.size(); ++i) // Greedily remove onsets closer than 30ms:
 		if ((percPeaks_.empty() or i > percPeaks_.back() + wait)
 			and percEnv_.at(i) == percEnvMax.at(i) // Mask out entries not equal to the local max
 			// Then mask out all entries less than the thresholded average:
-			and percEnv_.at(i) - percEnvSum.at(i) / ( // Correct sliding average
+			and percEnv_.at(i) - Divide(percEnvSum.at(i), // Correct sliding average
 				// in the ranges where the window needs to be truncated:
 				min(avgLen / 2, static_cast<int>(i)) // at the beginning
 				+ min(avgLen / 2, static_cast<int>(percEnv_.size() - i - 1)) // at the end
@@ -307,7 +308,7 @@ void HarmonicPercussive::Chromagram(const bool baseC, const NORM_TYPE norm,
 
 	vector<float>::iterator unusedIter;
 	const auto nOctaves(static_cast<int>(ceil( 	// How many octaves are we repeating?
-		static_cast<float>(cqt_->GetNumBins()) / cqt_->GetBinsPerOctave())));
+		Divide(cqt_->GetNumBins(), cqt_->GetBinsPerOctave()))));
 	for (auto& row : cq2Ch)
 	{
 		row.resize(row.size() * nOctaves); // repeat, then trim:

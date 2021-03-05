@@ -88,7 +88,7 @@ void MelTransform::MelFreqs(const size_t nMels, const float fMin, const float fM
 
 	assert(melFreqs_.empty() and "Mel frequencies have been calculated twice");
 	melFreqs_.resize(nMels);
-	for (size_t i(0); i < melFreqs_.size(); ++i) melFreqs_.at(i) = static_cast<float>(melMin + i * (melMax - melMin) / (melFreqs_.size() - 1));
+	for (size_t i(0); i < melFreqs_.size(); ++i) melFreqs_.at(i) = melMin + Divide(Multiply(i, melMax - melMin), melFreqs_.size() - 1);
 
 	// Mel to Hz:
 	if (htk) transform(melFreqs_.cbegin(), melFreqs_.cend(), melFreqs_.begin(), [](const float m) { return 700 * (pow(10, m / 2'595) - 1); });
@@ -109,7 +109,7 @@ void MelTransform::MelFilters(const size_t rate, const size_t nMels, const float
 
 	using placeholders::_1;
 
-	MelFreqs(nMels + 2, fMin, fMax ? fMax : rate / 2.f, htk);	// 'Center freqs' of mel bands - uniformly spaced between limits
+	MelFreqs(nMels + 2, fMin, fMax ? fMax : Divide(rate, 2), htk);	// 'Center freqs' of mel bands - uniformly spaced between limits
 	assert(not melFreqs_.empty() and "Mel frequencies should have already been calculated");
 	auto fDiff(melFreqs_);
 	adjacent_difference(melFreqs_.cbegin(), melFreqs_.cend(), fDiff.begin());
@@ -159,7 +159,7 @@ void MelTransform::CalcNoteIndices()
 	auto rightIter(melFreqs_.cend());
 	for (auto i(noteIndices_.size()); i; --i)
 	{
-		const auto freq(440 * pow(2.f, (static_cast<float>(i) - 1 + 21 - 69) / 12)); // Note + 21 --> Midi --> Hz
+		const auto freq(440 * pow(2.f, Divide(i - 1 + 21 - 69, 12))); // Note + 21 --> Midi --> Hz
 		rightIter = upper_bound(melFreqs_.cbegin(), rightIter, freq);
 		
 		if (rightIter == melFreqs_.cbegin()) break; // all other indices left as zeros

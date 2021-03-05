@@ -65,9 +65,9 @@ void Tempogram::Calculate(const vector<float>& oEnv, const int winLen, const boo
 		unusedIter = copy(oEnv.cbegin(), oEnv.cend(), paddedEnvelope.begin() + winLen / 2);
 		// "Linear ramp" padding mode, with zero end value:
 		for (int i(0); i < winLen / 2; ++i) paddedEnvelope.at(
-			static_cast<size_t>(i)) = oEnv.front() / (winLen / 2) * i;
+			static_cast<size_t>(i)) = Multiply(Divide(oEnv.front(), winLen / 2), i);
 		for (int i(0); i < winLen / 2 + winLen % 2; ++i) paddedEnvelope.at(
-			paddedEnvelope.size() - i - 1) = oEnv.back() / (winLen / 2 + winLen % 2) * i;
+			paddedEnvelope.size() - i - 1) = Multiply(Divide(oEnv.back(), winLen / 2 + winLen % 2), i);
 	}
 	else paddedEnvelope = oEnv; // windows are left-aligned
 
@@ -106,7 +106,7 @@ float Tempogram::MostProbableTempo(const vector<float>& oEnv, const int rate, co
 	assert(startBpm > 0 and "Start BPM must be positive and non-zero");
 	assert(acSize > 0 and "Length in seconds of the auto-correlation window must be > 0");
 
-	Calculate(oEnv, static_cast<int>(acSize * rate / hopLen));
+	Calculate(oEnv, static_cast<int>(Divide(Multiply(acSize, rate), hopLen)));
 	if (autoCorr2D_.empty()) return 0; // audio is too short
 
 	// If want to estimate time-varying tempo independently for each frame,
@@ -126,12 +126,12 @@ float Tempogram::MostProbableTempo(const vector<float>& oEnv, const int rate, co
 	bpms.front() = 0; // zero-lag bin skipped
 	for (size_t i(1); i < prior.size(); ++i)
 	{
-		bpms.at(i) = 60 * rate / static_cast<float>(hopLen * i);
+		bpms.at(i) = Divide(60 * rate, hopLen * i);
 		// Kill everything above the max tempo:
 		if (maxTempo > numeric_limits<float>::epsilon() and bpms.at(i) <= maxTempo)
 			// Weight the autocorrelation by a log-normal distribution:
-			prior.at(i) = tempos.at(i) * exp(-.5f * pow((log2(bpms.at(i))
-				- log2(static_cast<float>(startBpm))) / stdBpm, 2));
+			prior.at(i) = tempos.at(i) * exp(-Divide(pow((log2(bpms.at(i))
+				- log2(static_cast<float>(startBpm))) / stdBpm, 2), 2));
 	}
 
 	/* Really, instead of multiplying by the prior, we should set up a probabilistic model

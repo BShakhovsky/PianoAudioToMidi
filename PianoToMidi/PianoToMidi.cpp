@@ -16,7 +16,7 @@
 
 using namespace std;
 using namespace juce;
-using fdeep::internal::float_vec;
+using fdeep::float_vec;
 
 struct PianoData
 {
@@ -98,8 +98,8 @@ string PianoToMidi::FFmpegDecode(const char* mediaFile) const
 		<< "Bit_rate:\t\t" << data_->song->GetBitRate() << endl;
 
 	data_->song->Decode();
-//	os << "Duration:\t" << data_->song->GetNumSeconds() / 60 << " min : "
-//		<< data_->song->GetNumSeconds() % 60 << " sec" << endl;
+	os << "Duration:\t" << data_->song->GetNumSeconds() / 60 << " min : "
+		<< data_->song->GetNumSeconds() % 60 << " sec" << endl;
 	data_->song->MonoResample(rate);
 
 	return move(os.str());
@@ -252,10 +252,10 @@ WPARAM PianoToMidi::RnnProbabs() const
 #ifdef _DEBUG
 		for (size_t i(0); i < data_->nFrames * 88; ++i)
 		{
-			data_-> onsetProbs.at(i + data_->index / 4 * data_->nFrames * 88) = .501f * rand() / RAND_MAX;
-			data_->offsetProbs.at(i + data_->index / 4 * data_->nFrames * 88) = .501f * rand() / RAND_MAX;
-			data_-> frameProbs.at(i + data_->index / 4 * data_->nFrames * 88) = .501f * rand() / RAND_MAX;
-			data_->volumeProbs.at(i + data_->index / 4 * data_->nFrames * 88) = .501f * rand() / RAND_MAX;
+			data_-> onsetProbs.at(i + data_->index / 4 * data_->nFrames * 88) = static_cast<float>(.501 * rand() / RAND_MAX);
+			data_->offsetProbs.at(i + data_->index / 4 * data_->nFrames * 88) = static_cast<float>(.501 * rand() / RAND_MAX);
+			data_-> frameProbs.at(i + data_->index / 4 * data_->nFrames * 88) = static_cast<float>(.501 * rand() / RAND_MAX);
+			data_->volumeProbs.at(i + data_->index / 4 * data_->nFrames * 88) = static_cast<float>(.501 * rand() / RAND_MAX);
 		}
 		Sleep(500);
 #elif defined NDEBUG
@@ -293,7 +293,7 @@ WPARAM PianoToMidi::RnnProbabs() const
 	return 100;
 }
 
-const vector<float>& PianoToMidi::GetOnsets() const { return data_->onsetProbs; }
+const float_vec& PianoToMidi::GetOnsets() const { return data_->onsetProbs; }
 const float_vec& PianoToMidi::GetActives() const { return data_->frameProbs; }
 const array<size_t, 8>& PianoToMidi::GetMelOctaves() const { return data_->mel->GetOctaveIndices(); }
 const array<size_t, 88>& PianoToMidi::GetMelNoteIndices() const { return data_->mel->GetNoteIndices(); }
@@ -343,6 +343,7 @@ vector<tuple<size_t, size_t, size_t, int>> PianoToMidi::CalcNoteIntervals() cons
 	assert(data_->offsetProbs.empty() and "Offsets should have already been released");
 	data_->volumeProbs.clear();
 
+	data_->pianoRoll.resize(data_->frameProbs.size() / starts.size());
 	return move(result);
 }
 string PianoToMidi::Gamma() const
@@ -367,7 +368,6 @@ string PianoToMidi::Gamma() const
 		"A", "Bb", "B", "C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab" }.at(i);
 
 	assert(data_->pianoRoll.empty() and "Gamma have been called twice");
-	data_->pianoRoll.resize(data_->frameProbs.size() / notesCount.size());
 	const auto intervals(CalcNoteIntervals());
 	for (const auto& n : intervals)
 	{
@@ -482,7 +482,7 @@ string PianoToMidi::KeySignature() const
 	return "Key signature:\t" + (keySign.empty() ? "The scale does not correspond to any" : keySign);
 }
 
-void PianoToMidi::WriteMidi(const char* midiFile) const
+void PianoToMidi::WriteMidi(LPCTSTR midiFile, string fileA) const
 {
 	using placeholders::_1;
 	using boost::filesystem::exists;
@@ -492,11 +492,11 @@ void PianoToMidi::WriteMidi(const char* midiFile) const
 
 	const auto outputFile(File::getCurrentWorkingDirectory().getChildFile(String(midiFile)));
 	if (exists(outputFile.getFullPathName().toStdString()) and not outputFile.deleteFile())
-		throw MidiOutError((string("Could not delete MIDI file: ") + midiFile).c_str());
+		throw MidiOutError(("Could not delete MIDI file: " + fileA).c_str());
 	FileOutputStream outputStream(outputFile.getFullPathName());
 	if (outputStream.failedToOpen())
-		throw MidiOutError((string("Could not open MIDI file: ") + midiFile).c_str());
-	
+		throw MidiOutError(("Could not open MIDI file: " + fileA).c_str());
+
 	MidiMessageSequence track;
 	track.addEvent(MidiMessage::textMetaEvent(1, "Automatically transcribed from audio"));
 	track.addEvent(MidiMessage::textMetaEvent(2, "Used software created by Boris Shakhovsky"));
@@ -540,5 +540,5 @@ void PianoToMidi::WriteMidi(const char* midiFile) const
 	midi.addTrack(track);
 	data_->pianoRoll.clear();
 	if (not midi.writeTo(outputStream))
-		throw MidiOutError((string("Could not write to MIDI file: ") + midiFile).c_str());
+		throw MidiOutError(("Could not write to MIDI file: " + fileA).c_str());
 }

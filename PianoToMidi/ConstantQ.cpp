@@ -47,7 +47,7 @@ ConstantQ::ConstantQ(const shared_ptr<class AudioLoader>& audio, const size_t nB
 			qBasis_->GetFrequencies().cend() - octave, qBasis_->GetFrequencies().cend())
 		and "CQT-frequencies are wrong");
 
-	auto nOctaves(static_cast<int>(ceil(static_cast<float>(nBins) / octave)));
+	auto nOctaves(static_cast<int>(ceil(Divide(nBins, octave))));
 	auto filterCutoff(fMaxOctave * (1 + .5 *WIN_BAND_WIDTH[
 		static_cast<int>(window)] / qBasis_->GetQfactor())); // Required resampling quality:
 	const bool isKaiserFast(filterCutoff < BW_FASTEST * rateInitial_ / 2);
