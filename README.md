@@ -1,5 +1,7 @@
 # Polyphonic Piano Audio to MIDI Transcription
 
+![](https://img.shields.io/github/downloads/BShakhovsky/PianoAudioToMidi/total?logo=visual-studio&style=plastic)
+
 For algorithm explanation see Python version:
 
 https://github.com/BShakhovsky/PolyphonicPianoTranscription
