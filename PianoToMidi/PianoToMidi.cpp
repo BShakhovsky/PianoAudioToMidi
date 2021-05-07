@@ -144,7 +144,7 @@ string PianoToMidi::CqtTotal() const
 }
 
 #define GET_SPECTRUM(NAME, DATA, FUNC) vector<float> PianoToMidi::Get##NAME##() const { vector<float> result; if (data_->##DATA and not data_->##DATA##->Get##FUNC##()->empty()) \
-	result.assign(data_->##DATA##->Get##FUNC##()->cbegin(), data_->##DATA##->Get##FUNC##()->cend()); return move(result); }
+	result.assign(data_->##DATA##->Get##FUNC##()->cbegin(), data_->##DATA##->Get##FUNC##()->cend()); return /*move(*/result; }
 GET_SPECTRUM(Cqt, cqt, CQT)
 GET_SPECTRUM(Mel, mel, Mel)
 
@@ -344,7 +344,7 @@ vector<tuple<size_t, size_t, size_t, int>> PianoToMidi::CalcNoteIntervals() cons
 	data_->volumeProbs.clear();
 
 	data_->pianoRoll.resize(data_->frameProbs.size() / starts.size());
-	return move(result);
+	return /*move(*/result;
 }
 string PianoToMidi::Gamma() const
 {
@@ -499,7 +499,7 @@ void PianoToMidi::WriteMidi(LPCTSTR midiFile, string fileA) const
 
 	MidiMessageSequence track;
 	track.addEvent(MidiMessage::textMetaEvent(1, "Automatically transcribed from audio"));
-	track.addEvent(MidiMessage::textMetaEvent(2, "Used software created by Boris Shakhovsky"));
+	track.addEvent(MidiMessage::textMetaEvent(2, "Used Windows App created by Boris Shakhovsky"));
 	track.addEvent(MidiMessage::textMetaEvent(3, "Acoustic Grand Piano"));
 	track.addEvent(data_->GetKeySignEvent());
 

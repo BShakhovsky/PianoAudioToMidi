@@ -20,7 +20,7 @@ void AutoCorrelate(vector<float>* srcDst)
 	int specSize, initSize, workSize;
 	CHECK_IPP_RESULT(ippsDFTGetSize_R_32f(static_cast<int>(srcDst->size()),
 		IPP_FFT_DIV_INV_BY_N, ippAlgHintFast, &specSize, &initSize, &workSize));
-	const unique_ptr<byte[]> spec(new byte[static_cast<size_t>(specSize)]);
+	const unique_ptr<BYTE[]> spec(new BYTE[static_cast<size_t>(specSize)]);
 	vector<Ipp8u> initBuf(static_cast<size_t>(initSize)), workBuf(static_cast<size_t>(workSize));
 
 	CHECK_IPP_RESULT(ippsDFTInit_R_32f(static_cast<int>(srcDst->size()),
